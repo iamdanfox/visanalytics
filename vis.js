@@ -24,7 +24,7 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
   });
   return rawRow;
 }).get(function(error, rows) {
-  var HEIGHT, WEIGHT_PROPERTY, WIDTH, fontSizeScale, force, svg, texts, xPositionScale;
+  var HEIGHT, WEIGHT_PROPERTY, WIDTH, colourScale, fontSizeScale, force, maxW, minW, svg, texts, xPositionScale;
   console.log(rows[0], rows[20]);
   WIDTH = 800;
   HEIGHT = 400;
@@ -36,18 +36,19 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     border: '1px solid #333'
   });
   xPositionScale = d3.scale.linear().domain([0, 100]).range([0, WIDTH]);
-  fontSizeScale = d3.scale.linear().domain([
-    d3.min(rows, function(r) {
-      return r[WEIGHT_PROPERTY];
-    }), d3.max(rows, function(r) {
-      return r[WEIGHT_PROPERTY];
-    })
-  ]).range([12, 50]);
+  minW = d3.min(rows, function(r) {
+    return r[WEIGHT_PROPERTY];
+  });
+  maxW = d3.max(rows, function(r) {
+    return r[WEIGHT_PROPERTY];
+  });
+  fontSizeScale = d3.scale.linear().domain([minW, maxW]).range([12, 50]);
+  colourScale = d3.scale.linear().domain([minW, maxW]).range(['#f00', '#756bb1']);
   rows.map(function(r) {
     r.x = Math.random();
     return r.y = Math.random();
   });
-  force = d3.layout.force().charge(0).size([WIDTH, HEIGHT]).nodes(rows).charge(-30).gravity(0.1).on('tick', function() {
+  force = d3.layout.force().charge(0).size([WIDTH, HEIGHT]).nodes(rows).charge(-150).gravity(0.2).on('tick', function() {
     return texts.attr({
       x: function(r) {
         return r.x;
@@ -63,7 +64,9 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     'font-size': function(r) {
       return fontSizeScale(r[WEIGHT_PROPERTY]) + 'px';
     },
-    'fill': 'red',
+    'fill': function(r) {
+      return colourScale(r[WEIGHT_PROPERTY]);
+    },
     'font-family': 'impact'
   });
   force.start();

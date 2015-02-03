@@ -51,12 +51,16 @@ d3.csv('FreqWords5Year.csv')
       .domain([0, 100])
       .range([0, WIDTH])
 
+    minW = d3.min(rows, (r) -> r[WEIGHT_PROPERTY])
+    maxW = d3.max(rows, (r) -> r[WEIGHT_PROPERTY])
+
     fontSizeScale = d3.scale.linear()
-      .domain([
-        d3.min(rows, (r) -> r[WEIGHT_PROPERTY]),
-        d3.max(rows, (r) -> r[WEIGHT_PROPERTY])
-      ])
+      .domain([minW, maxW])
       .range([12, 50])
+
+    colourScale = d3.scale.linear()
+      .domain([minW, maxW])
+      .range(['#f00', '#756bb1'])
 
     # initialize
     rows.map (r) ->
@@ -70,8 +74,8 @@ d3.csv('FreqWords5Year.csv')
       # .linkStrength(0.1)
       # .friction(0.9)
       # .linkDistance(20)
-      .charge(-30)
-      .gravity(0.1)
+      .charge(-150)
+      .gravity(0.2)
       # .theta(0.8)
       # .alpha(0.1)
       .on('tick', ->
@@ -91,7 +95,7 @@ d3.csv('FreqWords5Year.csv')
       # .attr('y', (r) -> r.min)
       .style(
         'font-size': (r) -> fontSizeScale(r[WEIGHT_PROPERTY]) + 'px'
-        'fill': 'red'
+        'fill': (r) -> colourScale(r[WEIGHT_PROPERTY])
         'font-family': 'impact'
       )
 
