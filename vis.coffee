@@ -25,45 +25,81 @@ property, such as “first letter”, “word length” or “frequency of occur
 # display for each of the (20 <= k <= 40) tuples??? what does this mean?
 
 
-d3.csv('FreqWords5Year.csv').get((error, rows) ->
-
-  console.log(rows)
-  # use `avg` property of each row as weight.
-
-  svg = d3.select('#visualisation1')
-
-  WIDTH = 800
-  HEIGHT = 400
-
-  svg.style(
-    width: WIDTH
-    height: HEIGHT
-    background: '#e0e0e0'
-    border: '1px solid #333'
+d3.csv('FreqWords5Year.csv')
+  .row( (rawRow) ->
+    ['sum', 'avg'].map (property) -> rawRow[property] = parseInt(rawRow[property], 10)
+    rawRow
   )
+  .get((error, rows) ->
+    # use `avg` property of each row as weight.
+    console.log rows[0], rows[20]
+
+    WIDTH = 800
+    HEIGHT = 400
+    WEIGHT_PROPERTY = 'avg'
+
+    svg = d3.select('#visualisation1').style
+      width: WIDTH
+      height: HEIGHT
+      background: '#e0e0e0'
+      border: '1px solid #333'
+
+    # g = svg.append('g').style
+    #   transform: "translate(#{WIDTH/2}px, #{HEIGHT/2}px)"
+
+    xPositionScale = d3.scale.linear()
+      .domain([0, 100])
+      .range([0, WIDTH])
+
+    fontSizeScale = d3.scale.linear()
+      .domain([
+        d3.min(rows, (r) -> r[WEIGHT_PROPERTY]),
+        d3.max(rows, (r) -> r[WEIGHT_PROPERTY])
+      ])
+      .range([12, 50])
+
+    # initialize
+    rows.map (r) ->
+      r.x = Math.random()
+      r.y = Math.random()
+
+    force = d3.layout.force()
+      .charge(0)
+      .size([WIDTH, HEIGHT])
+      .nodes(rows)
+      # .linkStrength(0.1)
+      # .friction(0.9)
+      # .linkDistance(20)
+      .charge(-30)
+      .gravity(0.1)
+      # .theta(0.8)
+      # .alpha(0.1)
+      .on('tick', ->
+        texts.attr
+          x: (r) -> r.x
+          y: (r) -> r.y
+      )
 
 
-  svg.append('circle').attr(
-    r: 50
-    cx: 50
-    cy: 50
-    fill: 'red'
+    texts = svg.selectAll('text')
+      .data(rows)
+      .enter()
+      .append('text')
+      .text((r) -> r.word)
+      # .call(force.drag)
+      # .attr('x', (r) -> xPositionScale(r.avg))
+      # .attr('y', (r) -> r.min)
+      .style(
+        'font-size': (r) -> fontSizeScale(r[WEIGHT_PROPERTY]) + 'px'
+        'fill': 'red'
+        'font-family': 'impact'
+      )
+
+    force.start()
+
+
+
+    return
   )
-
-  xScale = d3.scale.linear()
-    .domain([0, 100])
-    .range([0, WIDTH])
-
-  svg.selectAll('circle')
-    .data(rows)
-    .enter()
-    .append('circle')
-    .attr('r', 10)
-    .attr('cx', (r) -> xScale(r.avg))
-    .attr('cy', (r) -> r.min)
-    .attr('fill', 'red')
-
-  return
-)
 
 

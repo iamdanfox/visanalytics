@@ -18,28 +18,53 @@ Your software must have the following essential functionality:
 property, such as “first letter”, “word length” or “frequency of occurrence”.
  */
 
-d3.csv('FreqWords5Year.csv').get(function(error, rows) {
-  var HEIGHT, WIDTH, svg, xScale;
-  console.log(rows);
-  svg = d3.select('#visualisation1');
+d3.csv('FreqWords5Year.csv').row(function(rawRow) {
+  ['sum', 'avg'].map(function(property) {
+    return rawRow[property] = parseInt(rawRow[property], 10);
+  });
+  return rawRow;
+}).get(function(error, rows) {
+  var HEIGHT, WEIGHT_PROPERTY, WIDTH, fontSizeScale, force, svg, texts, xPositionScale;
+  console.log(rows[0], rows[20]);
   WIDTH = 800;
   HEIGHT = 400;
-  svg.style({
+  WEIGHT_PROPERTY = 'avg';
+  svg = d3.select('#visualisation1').style({
     width: WIDTH,
     height: HEIGHT,
     background: '#e0e0e0',
     border: '1px solid #333'
   });
-  svg.append('circle').attr({
-    r: 50,
-    cx: 50,
-    cy: 50,
-    fill: 'red'
+  xPositionScale = d3.scale.linear().domain([0, 100]).range([0, WIDTH]);
+  fontSizeScale = d3.scale.linear().domain([
+    d3.min(rows, function(r) {
+      return r[WEIGHT_PROPERTY];
+    }), d3.max(rows, function(r) {
+      return r[WEIGHT_PROPERTY];
+    })
+  ]).range([12, 50]);
+  rows.map(function(r) {
+    r.x = Math.random();
+    return r.y = Math.random();
   });
-  xScale = d3.scale.linear().domain([0, 100]).range([0, WIDTH]);
-  svg.selectAll('circle').data(rows).enter().append('circle').attr('r', 10).attr('cx', function(r) {
-    return xScale(r.avg);
-  }).attr('cy', function(r) {
-    return r.min;
-  }).attr('fill', 'red');
+  force = d3.layout.force().charge(0).size([WIDTH, HEIGHT]).nodes(rows).charge(-30).gravity(0.1).on('tick', function() {
+    return texts.attr({
+      x: function(r) {
+        return r.x;
+      },
+      y: function(r) {
+        return r.y;
+      }
+    });
+  });
+  texts = svg.selectAll('text').data(rows).enter().append('text').text(function(r) {
+    return r.word;
+  }).style({
+    'font-size': function(r) {
+      return fontSizeScale(r[WEIGHT_PROPERTY]) + 'px';
+    },
+    'fill': 'red',
+    'font-family': 'impact'
+  });
+  force.start();
 });
