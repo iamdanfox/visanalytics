@@ -28,14 +28,16 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
   });
   return rawRow;
 }).get(function(error, rows) {
-  var WIDTH, adjustedRows, brush, brushes, colName, colourScale, focusLines, g, grouped, height, horizontalScale, rankingData, svg, verticalOrderingScale, _i, _j, _len, _len1;
-  WIDTH = 800;
+  var HEIGHT, WIDTH, adjustedRows, brush, brushes, colName, colourScale, focusLines, g, grouped, horizontalScale, rankingData, rowMatchesBrushes, svg, verticalOrderingScale, _i, _j, _len, _len1;
+  WIDTH = 600;
+  HEIGHT = 600;
   svg = d3.select('#visualisation2').style({
-    width: WIDTH,
+    width: WIDTH + 200,
+    height: HEIGHT + 200,
     background: '#444'
   });
   g = svg.append('g').attr({
-    'transform': 'translate(100,100)'
+    'transform': 'translate(70,100)'
   });
   grouped = {};
   for (_i = 0, _len = COLUMN_NAMES.length; _i < _len; _i++) {
@@ -62,9 +64,9 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
       word: row.word
     };
   });
-  horizontalScale = d3.scale.linear().domain([0, 4]).range([0, 580]);
-  verticalOrderingScale = d3.scale.linear().domain([0, rows.length - 1]).range([0, 600]);
-  colourScale = d3.scale.category20c().domain([36, 1000]);
+  horizontalScale = d3.scale.linear().domain([0, 4]).range([0, WIDTH - 20]);
+  verticalOrderingScale = d3.scale.linear().domain([0, rows.length - 1]).range([0, HEIGHT]);
+  colourScale = d3.scale.linear().domain([0, 40]).range(['hsl(240, 40%, 90%)', 'hsl(111, 60%, 30%)']);
   g.selectAll('path').data(adjustedRows).enter().append('path').attr({
     'title': function(row) {
       return row.word;
@@ -78,11 +80,22 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
       }))(row.rankingData);
     },
     'stroke': function(row) {
-      return colourScale(row.sum);
+      return colourScale(row.rankingData[4].y);
     },
     'stroke-width': 1.8,
-    'fill': 'none',
-    'opacity': 0.5
+    'fill': 'none'
+  });
+  g.selectAll('text').data(adjustedRows).enter().append('text').text(function(row) {
+    return row.word;
+  }).attr({
+    'class': 'word',
+    x: WIDTH + 15,
+    y: function(row) {
+      return verticalOrderingScale(row.rankingData[4].y);
+    },
+    fill: function(row) {
+      return colourScale(row.rankingData[4].y);
+    }
   });
   brushes = [0, 1, 2, 3, 4].map(function(i) {
     var axis, brush, brushg;
@@ -102,32 +115,28 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     });
     return brush;
   });
-  focusLines = function() {
-    return g.selectAll('path.line').attr({
-      'opacity': 0.1
-    }).filter(function(row) {
-      var i, lower, upper, within, _j, _ref, _ref1;
-      for (i = _j = 0; _j <= 4; i = ++_j) {
-        if (!(!brushes[i].empty())) {
-          continue;
-        }
-        _ref = brushes[i].extent(), lower = _ref[0], upper = _ref[1];
-        within = (lower <= (_ref1 = row.rankingData[i].y) && _ref1 <= upper);
-        if (!within) {
-          return false;
-        }
+  rowMatchesBrushes = function(row) {
+    var i, lower, upper, _j, _ref, _ref1;
+    for (i = _j = 0; _j <= 4; i = ++_j) {
+      if (!(!brushes[i].empty())) {
+        continue;
       }
-      return true;
-    }).attr({
-      'opacity': 5
+      _ref = brushes[i].extent(), lower = _ref[0], upper = _ref[1];
+      if (!((lower <= (_ref1 = row.rankingData[i].y) && _ref1 <= upper))) {
+        return false;
+      }
+    }
+    return true;
+  };
+  focusLines = function() {
+    return g.selectAll('path.line, text.word').attr({
+      'opacity': 0.1
+    }).filter(rowMatchesBrushes).attr({
+      'opacity': 0.8
     });
   };
   for (_j = 0, _len1 = brushes.length; _j < _len1; _j++) {
     brush = brushes[_j];
     brush.on('brush', focusLines);
   }
-  height = g[0][0].getBBox().height;
-  svg.style({
-    height: height + 200
-  });
 });

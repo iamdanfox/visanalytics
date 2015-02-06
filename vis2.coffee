@@ -28,15 +28,17 @@ d3.csv('FreqWords5Year.csv')
   )
   .get((error, rows) ->
     # initialisation stuff
-    WIDTH = 800
+    WIDTH = 600
+    HEIGHT = 600
 
     svg = d3.select('#visualisation2').style
-      width: WIDTH
+      width: WIDTH + 200
+      height: HEIGHT + 200
       background: '#444'
       # border: '1px solid #333'
 
     g = svg.append('g').attr
-      'transform': 'translate(100,100)'
+      'transform': 'translate(70,100)'
 
     # project data
     grouped = {}
@@ -52,16 +54,19 @@ d3.csv('FreqWords5Year.csv')
       sum: row.sum
       word: row.word
 
-    horizontalScale = d3.scale.linear().domain([0,4]).range([0,580])
-    verticalOrderingScale = d3.scale.linear().domain([0, rows.length - 1]).range([0, 600])
-    colourScale = d3.scale.category20c().domain([36,1000]) # for sum attribute
+    horizontalScale = d3.scale.linear().domain([0,4]).range([0, WIDTH - 20])
+    verticalOrderingScale = d3.scale.linear().domain([0, rows.length - 1]).range([0, HEIGHT])
+    # colourScale = d3.scale.category20c().domain([36,1000]) # for sum attribute
+
+    colourScale = d3.scale.linear().domain([0, 40]).range([
+      'hsl(240, 40%, 90%)', 'hsl(111, 60%, 30%)'])
 
     # draw actual lines
     g.selectAll('path')
       .data(adjustedRows)
       .enter()
       .append('path')
-      .attr(
+      .attr
         'title': (row) -> row.word
         'class': 'line'
         'd': (row) ->
@@ -72,11 +77,22 @@ d3.csv('FreqWords5Year.csv')
             .x (d) -> horizontalScale(d.x)
             .y (d) -> verticalOrderingScale(d.y)
           )(row.rankingData)
-        'stroke': (row) -> colourScale(row.sum)
+        'stroke': (row) -> colourScale(row.rankingData[4].y)
         'stroke-width': 1.8
         'fill': 'none'
-        'opacity': 0.5
-      )
+        # 'opacity': 0.8
+
+    # draw on labels
+    g.selectAll('text')
+      .data(adjustedRows)
+      .enter()
+      .append('text')
+      .text (row) -> row.word
+      .attr
+        'class': 'word'
+        x: WIDTH + 15
+        y: (row) -> verticalOrderingScale(row.rankingData[4].y)
+        fill: (row) -> colourScale(row.rankingData[4].y)
 
     # draw on axes
     brushes = [0..4].map (i) ->
@@ -105,27 +121,21 @@ d3.csv('FreqWords5Year.csv')
 
       return brush
 
+    # brushing behaviour
+    rowMatchesBrushes = (row) ->
+      for i in [0..4] when not brushes[i].empty()
+        [lower, upper] = brushes[i].extent()
+        return false unless lower <= row.rankingData[i].y <= upper
+      return true
+
     focusLines = ->
-      g.selectAll('path.line')
-        .attr
-          'opacity': 0.1
-        .filter (row) ->
-          for i in [0..4] when not brushes[i].empty()
-            [lower, upper] = brushes[i].extent()
-            within = lower <= row.rankingData[i].y <= upper
-            if not within
-              return false
-          return true
-        .attr
-          'opacity': 5
+      g.selectAll('path.line, text.word')
+        .attr 'opacity': 0.1
+        .filter rowMatchesBrushes
+        .attr 'opacity': 0.8
 
     for brush in brushes
       brush.on 'brush', focusLines
-
-    # auto set visualisation height
-    {height} = g[0][0].getBBox()
-    svg.style
-      height: height + 200
 
     return
   )
