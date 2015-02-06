@@ -28,14 +28,13 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
   });
   return rawRow;
 }).get(function(error, rows) {
-  var HEIGHT, WIDTH, axis, colName, colourScale, g, grouped, height, horizontalScale, i, max, min, rankingData, svg, verticalOrderingScale, verticalScale, _i, _j, _len;
+  var HEIGHT, WIDTH, axis, colName, colourScale, g, grouped, height, horizontalScale, i, rankingData, svg, verticalOrderingScale, _i, _j, _len;
   WIDTH = 800;
   HEIGHT = 380;
   svg = d3.select('#visualisation2').style({
     width: WIDTH,
     height: HEIGHT,
-    background: 'white',
-    border: '1px solid #333'
+    background: '#444'
   });
   g = svg.append('g').attr('transform', 'translate(100,100)');
   grouped = {};
@@ -45,18 +44,6 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
       return row[colName];
     }).sort().reverse();
   }
-  min = d3.min(rows, function(row) {
-    return d3.min(COLUMN_NAMES.map(function(colname) {
-      return row[colname];
-    }));
-  });
-  max = d3.max(rows, function(row) {
-    return d3.max(COLUMN_NAMES.map(function(colname) {
-      return row[colname];
-    }));
-  });
-  console.log('min', min, 'max', max);
-  verticalScale = d3.scale.linear().domain([min, max]).range([0, 500]);
   horizontalScale = d3.scale.linear().domain([0, 4]).range([0, 580]);
   verticalOrderingScale = d3.scale.linear().domain([0, rows.length - 1]).range([0, 500]);
   colourScale = d3.scale.category20c().domain([36, 1000]);

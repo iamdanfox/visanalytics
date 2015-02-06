@@ -34,8 +34,8 @@ d3.csv('FreqWords5Year.csv')
     svg = d3.select('#visualisation2').style
       width: WIDTH
       height: HEIGHT
-      background: 'white'
-      border: '1px solid #333'
+      background: '#444'
+      # border: '1px solid #333'
 
     g = svg.append('g').attr('transform', 'translate(100,100)')
 
@@ -45,14 +45,14 @@ d3.csv('FreqWords5Year.csv')
       grouped[colName] = rows.map((row) -> row[colName]).sort().reverse()
 
     # draw the vertical axes
-    min = d3.min(rows, (row) -> d3.min(COLUMN_NAMES.map (colname) -> row[colname]))
-    max = d3.max(rows, (row) -> d3.max(COLUMN_NAMES.map (colname) -> row[colname]))
+    # min = d3.min(rows, (row) -> d3.min(COLUMN_NAMES.map (colname) -> row[colname]))
+    # max = d3.max(rows, (row) -> d3.max(COLUMN_NAMES.map (colname) -> row[colname]))
 
-    console.log 'min', min, 'max', max
+    # console.log 'min', min, 'max', max
 
-    verticalScale = d3.scale.linear()
-      .domain([min,max])
-      .range([0, 500])
+    # verticalScale = d3.scale.linear()
+    #   .domain([min,max])
+    #   .range([0, 500])
 
     horizontalScale = d3.scale.linear().domain([0,4]).range([0,580])
 
