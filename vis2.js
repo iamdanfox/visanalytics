@@ -23,18 +23,18 @@ var COLUMN_NAMES;
 COLUMN_NAMES = ['1990-1994', '1995-1999', '2000-2004', '2005-2009', '2010-2014'];
 
 d3.csv('FreqWords5Year.csv').row(function(rawRow) {
-  COLUMN_NAMES.map(function(property) {
-    return rawRow[property] = parseInt(rawRow[property], 10);
+  (['sum'].concat(COLUMN_NAMES)).map(function(columnName) {
+    return rawRow[columnName] = parseInt(rawRow[columnName], 10);
   });
   return rawRow;
 }).get(function(error, rows) {
-  var HEIGHT, WIDTH, axis, colName, g, grouped, height, horizontalScale, i, max, min, rankingData, svg, verticalOrderingScale, verticalScale, _i, _j, _len;
+  var HEIGHT, WIDTH, axis, colName, colourScale, g, grouped, height, horizontalScale, i, max, min, rankingData, svg, verticalOrderingScale, verticalScale, _i, _j, _len;
   WIDTH = 800;
   HEIGHT = 380;
   svg = d3.select('#visualisation2').style({
     width: WIDTH,
     height: HEIGHT,
-    background: '#e0e0e0',
+    background: 'white',
     border: '1px solid #333'
   });
   g = svg.append('g').attr('transform', 'translate(100,100)');
@@ -59,14 +59,12 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
   verticalScale = d3.scale.linear().domain([min, max]).range([0, 500]);
   horizontalScale = d3.scale.linear().domain([0, 4]).range([0, 580]);
   verticalOrderingScale = d3.scale.linear().domain([0, rows.length - 1]).range([0, 500]);
+  colourScale = d3.scale.category20c().domain([36, 1000]);
   axis = d3.svg.axis().scale(verticalOrderingScale).orient('right');
-  for (i = _j = 0; _j <= 4; i = ++_j) {
-    g.append('g').attr('transform', 'translate(' + horizontalScale(i) + ',0)').call(axis);
-  }
   rankingData = function(row) {
-    var _k, _results;
+    var i, _j, _results;
     _results = [];
-    for (i = _k = 0; _k <= 4; i = ++_k) {
+    for (i = _j = 0; _j <= 4; i = ++_j) {
       _results.push({
         x: i,
         y: grouped[COLUMN_NAMES[i]].indexOf(row[COLUMN_NAMES[i]])
@@ -74,15 +72,23 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     }
     return _results;
   };
-  g.selectAll('path').data(rows).enter().append('path').attr('d', function(row) {
-    var l;
-    l = d3.svg.line().x(function(d) {
-      return horizontalScale(d.x);
-    }).y(function(d) {
-      return verticalOrderingScale(d.y);
-    });
-    return l(rankingData(row));
-  }).attr('stroke', 'rgba(0,0,255,0.3)').attr('stroke-width', 2).attr('fill', 'none');
+  g.selectAll('path').data(rows).enter().append('path').attr({
+    'd': function(row) {
+      return (d3.svg.line().interpolate('cardinal').tension(0.8).x(function(d) {
+        return horizontalScale(d.x);
+      }).y(function(d) {
+        return verticalOrderingScale(d.y);
+      }))(rankingData(row));
+    },
+    'stroke': function(row) {
+      return colourScale(row.sum);
+    },
+    'stroke-width': 1.8,
+    'fill': 'none'
+  });
+  for (i = _j = 0; _j <= 4; i = ++_j) {
+    g.append('g').attr('transform', 'translate(' + horizontalScale(i) + ',0)').call(axis);
+  }
   height = g[0][0].getBBox().height;
   svg.style({
     height: height + 200

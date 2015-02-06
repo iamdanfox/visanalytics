@@ -22,7 +22,8 @@ COLUMN_NAMES = ['1990-1994', '1995-1999', '2000-2004', '2005-2009', '2010-2014']
 
 d3.csv('FreqWords5Year.csv')
   .row( (rawRow) ->
-    COLUMN_NAMES.map (property) -> rawRow[property] = parseInt(rawRow[property], 10)
+    (['sum'].concat COLUMN_NAMES).map (columnName) ->
+      rawRow[columnName] = parseInt(rawRow[columnName], 10)
     rawRow
   )
   .get((error, rows) ->
@@ -33,7 +34,7 @@ d3.csv('FreqWords5Year.csv')
     svg = d3.select('#visualisation2').style
       width: WIDTH
       height: HEIGHT
-      background: '#e0e0e0'
+      background: 'white'
       border: '1px solid #333'
 
     g = svg.append('g').attr('transform', 'translate(100,100)')
@@ -59,14 +60,11 @@ d3.csv('FreqWords5Year.csv')
       .domain([0, rows.length - 1])
       .range([0, 500])
 
+    colourScale = d3.scale.category20c().domain([36,1000]) # for sum attribute
+
     axis = d3.svg.axis()
       .scale(verticalOrderingScale)
       .orient('right')
-
-    for i in [0..4]
-      g.append('g')
-        .attr('transform', 'translate(' + horizontalScale(i) + ',0)')
-        .call(axis)
 
     # draw the actual lines
     # lineData = (row) -> for i in [0..4]
@@ -81,16 +79,25 @@ d3.csv('FreqWords5Year.csv')
       .data(rows)
       .enter()
       .append('path')
-      .attr('d', (row) ->
-        l = d3.svg.line()
-          .x (d) -> horizontalScale(d.x)
-          .y (d) -> verticalOrderingScale(d.y)
-        l(rankingData(row))
+      .attr(
+        'd': (row) ->
+          (d3.svg.line()
+            .interpolate('cardinal')
+            .tension(0.8)
+            # .interpolate('linear')
+            .x (d) -> horizontalScale(d.x)
+            .y (d) -> verticalOrderingScale(d.y)
+          )(rankingData(row))
+        'stroke': (row) -> colourScale(row.sum)
+        'stroke-width': 1.8
+        'fill': 'none'
       )
-      .attr('stroke', 'rgba(0,0,255,0.3)')
-      .attr('stroke-width', 2)
-      .attr('fill', 'none');
 
+    # draw on axes
+    for i in [0..4]
+      g.append('g')
+        .attr('transform', 'translate(' + horizontalScale(i) + ',0)')
+        .call(axis)
 
     # auto set visualisation height
     {height} = g[0][0].getBBox()
