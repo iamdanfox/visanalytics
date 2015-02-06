@@ -37,7 +37,9 @@ d3.csv('FreqWords5Year.csv')
       background: '#444'
       # border: '1px solid #333'
 
-    g = svg.append('g').attr('transform', 'translate(100,100)')
+    g = svg.append('g').attr
+      'transform': 'translate(100,100)'
+      'class': 'main'
 
     # project data
     grouped = {}
@@ -58,7 +60,7 @@ d3.csv('FreqWords5Year.csv')
 
     verticalOrderingScale = d3.scale.linear()
       .domain([0, rows.length - 1])
-      .range([0, 500])
+      .range([0, 600])
 
     colourScale = d3.scale.category20c().domain([36,1000]) # for sum attribute
 
@@ -80,6 +82,7 @@ d3.csv('FreqWords5Year.csv')
       .enter()
       .append('path')
       .attr(
+        'title': (row) -> row.word
         'd': (row) ->
           (d3.svg.line()
             .interpolate('cardinal')
@@ -91,13 +94,30 @@ d3.csv('FreqWords5Year.csv')
         'stroke': (row) -> colourScale(row.sum)
         'stroke-width': 1.8
         'fill': 'none'
+        'opacity': 0.5
       )
 
     # draw on axes
     for i in [0..4]
       g.append('g')
-        .attr('transform', 'translate(' + horizontalScale(i) + ',0)')
+        .attr
+          'class': 'vertical-axis'
+          transform: 'translate(' + horizontalScale(i) + ',0)'
         .call(axis)
+
+    brush = d3.svg.brush()
+      .y(verticalOrderingScale)
+      .extent([10,20])
+
+    brushg = g.append('g')
+      .attr(
+        'class': 'brush'
+        'transform': 'translate(-10,0)'
+        'fill': 'rgba(255,0,0,0.2)'
+      ).call(brush)
+
+    brushg.selectAll('rect').attr
+      width: 40
 
     # auto set visualisation height
     {height} = g[0][0].getBBox()

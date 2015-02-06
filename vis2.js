@@ -28,7 +28,7 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
   });
   return rawRow;
 }).get(function(error, rows) {
-  var HEIGHT, WIDTH, axis, colName, colourScale, g, grouped, height, horizontalScale, i, rankingData, svg, verticalOrderingScale, _i, _j, _len;
+  var HEIGHT, WIDTH, axis, brush, brushg, colName, colourScale, g, grouped, height, horizontalScale, i, rankingData, svg, verticalOrderingScale, _i, _j, _len;
   WIDTH = 800;
   HEIGHT = 380;
   svg = d3.select('#visualisation2').style({
@@ -36,7 +36,10 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     height: HEIGHT,
     background: '#444'
   });
-  g = svg.append('g').attr('transform', 'translate(100,100)');
+  g = svg.append('g').attr({
+    'transform': 'translate(100,100)',
+    'class': 'main'
+  });
   grouped = {};
   for (_i = 0, _len = COLUMN_NAMES.length; _i < _len; _i++) {
     colName = COLUMN_NAMES[_i];
@@ -45,7 +48,7 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     }).sort().reverse();
   }
   horizontalScale = d3.scale.linear().domain([0, 4]).range([0, 580]);
-  verticalOrderingScale = d3.scale.linear().domain([0, rows.length - 1]).range([0, 500]);
+  verticalOrderingScale = d3.scale.linear().domain([0, rows.length - 1]).range([0, 600]);
   colourScale = d3.scale.category20c().domain([36, 1000]);
   axis = d3.svg.axis().scale(verticalOrderingScale).orient('right');
   rankingData = function(row) {
@@ -60,6 +63,9 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     return _results;
   };
   g.selectAll('path').data(rows).enter().append('path').attr({
+    'title': function(row) {
+      return row.word;
+    },
     'd': function(row) {
       return (d3.svg.line().interpolate('cardinal').tension(0.8).x(function(d) {
         return horizontalScale(d.x);
@@ -71,11 +77,24 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
       return colourScale(row.sum);
     },
     'stroke-width': 1.8,
-    'fill': 'none'
+    'fill': 'none',
+    'opacity': 0.5
   });
   for (i = _j = 0; _j <= 4; i = ++_j) {
-    g.append('g').attr('transform', 'translate(' + horizontalScale(i) + ',0)').call(axis);
+    g.append('g').attr({
+      'class': 'vertical-axis',
+      transform: 'translate(' + horizontalScale(i) + ',0)'
+    }).call(axis);
   }
+  brush = d3.svg.brush().y(verticalOrderingScale).extent([10, 20]);
+  brushg = g.append('g').attr({
+    'class': 'brush',
+    'transform': 'translate(-10,0)',
+    'fill': 'rgba(255,0,0,0.2)'
+  }).call(brush);
+  brushg.selectAll('rect').attr({
+    width: 40
+  });
   height = g[0][0].getBBox().height;
   svg.style({
     height: height + 200
