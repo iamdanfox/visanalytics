@@ -28,17 +28,14 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
   });
   return rawRow;
 }).get(function(error, rows) {
-  var HEIGHT, WIDTH, axis, brush, brushg, colName, colourScale, g, grouped, height, horizontalScale, i, rankingData, svg, verticalOrderingScale, _i, _j, _len;
+  var WIDTH, adjustedRows, brush, brushes, colName, colourScale, focusLines, g, grouped, height, horizontalScale, rankingData, svg, verticalOrderingScale, _i, _j, _len, _len1;
   WIDTH = 800;
-  HEIGHT = 380;
   svg = d3.select('#visualisation2').style({
     width: WIDTH,
-    height: HEIGHT,
     background: '#444'
   });
   g = svg.append('g').attr({
-    'transform': 'translate(100,100)',
-    'class': 'main'
+    'transform': 'translate(100,100)'
   });
   grouped = {};
   for (_i = 0, _len = COLUMN_NAMES.length; _i < _len; _i++) {
@@ -47,10 +44,6 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
       return row[colName];
     }).sort().reverse();
   }
-  horizontalScale = d3.scale.linear().domain([0, 4]).range([0, 580]);
-  verticalOrderingScale = d3.scale.linear().domain([0, rows.length - 1]).range([0, 600]);
-  colourScale = d3.scale.category20c().domain([36, 1000]);
-  axis = d3.svg.axis().scale(verticalOrderingScale).orient('right');
   rankingData = function(row) {
     var i, _j, _results;
     _results = [];
@@ -62,16 +55,27 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     }
     return _results;
   };
-  g.selectAll('path').data(rows).enter().append('path').attr({
+  adjustedRows = rows.map(function(row) {
+    return {
+      rankingData: rankingData(row),
+      sum: row.sum,
+      word: row.word
+    };
+  });
+  horizontalScale = d3.scale.linear().domain([0, 4]).range([0, 580]);
+  verticalOrderingScale = d3.scale.linear().domain([0, rows.length - 1]).range([0, 600]);
+  colourScale = d3.scale.category20c().domain([36, 1000]);
+  g.selectAll('path').data(adjustedRows).enter().append('path').attr({
     'title': function(row) {
       return row.word;
     },
+    'class': 'line',
     'd': function(row) {
       return (d3.svg.line().interpolate('cardinal').tension(0.8).x(function(d) {
         return horizontalScale(d.x);
       }).y(function(d) {
         return verticalOrderingScale(d.y);
-      }))(rankingData(row));
+      }))(row.rankingData);
     },
     'stroke': function(row) {
       return colourScale(row.sum);
@@ -80,21 +84,48 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     'fill': 'none',
     'opacity': 0.5
   });
-  for (i = _j = 0; _j <= 4; i = ++_j) {
+  brushes = [0, 1, 2, 3, 4].map(function(i) {
+    var axis, brush, brushg;
+    axis = d3.svg.axis().scale(verticalOrderingScale).orient('right');
     g.append('g').attr({
       'class': 'vertical-axis',
       transform: 'translate(' + horizontalScale(i) + ',0)'
     }).call(axis);
-  }
-  brush = d3.svg.brush().y(verticalOrderingScale).extent([10, 20]);
-  brushg = g.append('g').attr({
-    'class': 'brush',
-    'transform': 'translate(-10,0)',
-    'fill': 'rgba(255,0,0,0.2)'
-  }).call(brush);
-  brushg.selectAll('rect').attr({
-    width: 40
+    brush = d3.svg.brush().y(verticalOrderingScale);
+    brushg = g.append('g').attr({
+      'class': 'brush',
+      'transform': 'translate(' + (horizontalScale(i) - 10) + ',0)',
+      'fill': 'rgba(255,0,0,0.2)'
+    }).call(brush);
+    brushg.selectAll('rect').attr({
+      width: 40
+    });
+    return brush;
   });
+  focusLines = function() {
+    return g.selectAll('path.line').attr({
+      'opacity': 0.1
+    }).filter(function(row) {
+      var i, lower, upper, within, _j, _ref, _ref1;
+      for (i = _j = 0; _j <= 4; i = ++_j) {
+        if (!(!brushes[i].empty())) {
+          continue;
+        }
+        _ref = brushes[i].extent(), lower = _ref[0], upper = _ref[1];
+        within = (lower <= (_ref1 = row.rankingData[i].y) && _ref1 <= upper);
+        if (!within) {
+          return false;
+        }
+      }
+      return true;
+    }).attr({
+      'opacity': 5
+    });
+  };
+  for (_j = 0, _len1 = brushes.length; _j < _len1; _j++) {
+    brush = brushes[_j];
+    brush.on('brush', focusLines);
+  }
   height = g[0][0].getBBox().height;
   svg.style({
     height: height + 200

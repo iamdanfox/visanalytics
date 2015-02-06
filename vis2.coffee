@@ -29,60 +29,41 @@ d3.csv('FreqWords5Year.csv')
   .get((error, rows) ->
     # initialisation stuff
     WIDTH = 800
-    HEIGHT = 380
 
     svg = d3.select('#visualisation2').style
       width: WIDTH
-      height: HEIGHT
       background: '#444'
       # border: '1px solid #333'
 
     g = svg.append('g').attr
       'transform': 'translate(100,100)'
-      'class': 'main'
 
     # project data
     grouped = {}
     for colName in COLUMN_NAMES
       grouped[colName] = rows.map((row) -> row[colName]).sort().reverse()
 
-    # draw the vertical axes
-    # min = d3.min(rows, (row) -> d3.min(COLUMN_NAMES.map (colname) -> row[colname]))
-    # max = d3.max(rows, (row) -> d3.max(COLUMN_NAMES.map (colname) -> row[colname]))
-
-    # console.log 'min', min, 'max', max
-
-    # verticalScale = d3.scale.linear()
-    #   .domain([min,max])
-    #   .range([0, 500])
-
-    horizontalScale = d3.scale.linear().domain([0,4]).range([0,580])
-
-    verticalOrderingScale = d3.scale.linear()
-      .domain([0, rows.length - 1])
-      .range([0, 600])
-
-    colourScale = d3.scale.category20c().domain([36,1000]) # for sum attribute
-
-    axis = d3.svg.axis()
-      .scale(verticalOrderingScale)
-      .orient('right')
-
-    # draw the actual lines
-    # lineData = (row) -> for i in [0..4]
-    #   x: i
-    #   y: row[COLUMN_NAMES[i]]
-
     rankingData = (row) -> for i in [0..4]
       x: i
       y: grouped[COLUMN_NAMES[i]].indexOf row[COLUMN_NAMES[i]]
 
+    adjustedRows = rows.map (row) ->
+      rankingData: rankingData(row)
+      sum: row.sum
+      word: row.word
+
+    horizontalScale = d3.scale.linear().domain([0,4]).range([0,580])
+    verticalOrderingScale = d3.scale.linear().domain([0, rows.length - 1]).range([0, 600])
+    colourScale = d3.scale.category20c().domain([36,1000]) # for sum attribute
+
+    # draw actual lines
     g.selectAll('path')
-      .data(rows)
+      .data(adjustedRows)
       .enter()
       .append('path')
       .attr(
         'title': (row) -> row.word
+        'class': 'line'
         'd': (row) ->
           (d3.svg.line()
             .interpolate('cardinal')
@@ -90,7 +71,7 @@ d3.csv('FreqWords5Year.csv')
             # .interpolate('linear')
             .x (d) -> horizontalScale(d.x)
             .y (d) -> verticalOrderingScale(d.y)
-          )(rankingData(row))
+          )(row.rankingData)
         'stroke': (row) -> colourScale(row.sum)
         'stroke-width': 1.8
         'fill': 'none'
@@ -98,26 +79,48 @@ d3.csv('FreqWords5Year.csv')
       )
 
     # draw on axes
-    for i in [0..4]
+    brushes = [0..4].map (i) ->
+      axis = d3.svg.axis()
+        .scale(verticalOrderingScale)
+        .orient('right')
+
       g.append('g')
         .attr
           'class': 'vertical-axis'
           transform: 'translate(' + horizontalScale(i) + ',0)'
         .call(axis)
 
-    brush = d3.svg.brush()
-      .y(verticalOrderingScale)
-      .extent([10,20])
+      brush = d3.svg.brush()
+        .y(verticalOrderingScale)
 
-    brushg = g.append('g')
-      .attr(
-        'class': 'brush'
-        'transform': 'translate(-10,0)'
-        'fill': 'rgba(255,0,0,0.2)'
-      ).call(brush)
+      brushg = g.append('g')
+        .attr(
+          'class': 'brush'
+          'transform': 'translate(' + (horizontalScale(i) - 10) + ',0)'
+          'fill': 'rgba(255,0,0,0.2)'
+        ).call(brush)
 
-    brushg.selectAll('rect').attr
-      width: 40
+      brushg.selectAll('rect').attr
+        width: 40
+
+      return brush
+
+    focusLines = ->
+      g.selectAll('path.line')
+        .attr
+          'opacity': 0.1
+        .filter (row) ->
+          for i in [0..4] when not brushes[i].empty()
+            [lower, upper] = brushes[i].extent()
+            within = lower <= row.rankingData[i].y <= upper
+            if not within
+              return false
+          return true
+        .attr
+          'opacity': 5
+
+    for brush in brushes
+      brush.on 'brush', focusLines
 
     # auto set visualisation height
     {height} = g[0][0].getBBox()
