@@ -1,6 +1,4 @@
 # file assumes `d3` has already been loaded
-console.log('hello')
-
 
 ###
 
@@ -32,10 +30,10 @@ d3.csv('FreqWords5Year.csv')
   )
   .get((error, rows) ->
     # use `avg` property of each row as weight.
-    console.log rows[0], rows[20]
+    # console.log rows[0], rows[20]
 
     WIDTH = 800
-    HEIGHT = 400
+    HEIGHT = 380
     WEIGHT_PROPERTY = 'avg'
 
     svg = d3.select('#visualisation1').style
@@ -90,7 +88,7 @@ d3.csv('FreqWords5Year.csv')
       .enter()
       .append('text')
       .text((r) -> r.word)
-      # .call(force.drag)
+      .call(force.drag)
       # .attr('x', (r) -> xPositionScale(r.avg))
       # .attr('y', (r) -> r.min)
       .style(
@@ -107,3 +105,4 @@ d3.csv('FreqWords5Year.csv')
   )
 
 
+# 2 hours . TODO: use https://github.com/jasondavies/d3-cloud/blob/master/examples/simple.html.
