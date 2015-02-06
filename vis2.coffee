@@ -61,12 +61,49 @@ d3.csv('FreqWords5Year.csv')
     colourScale = d3.scale.linear().domain([0, 40]).range([
       'hsl(240, 40%, 90%)', 'hsl(111, 60%, 30%)'])
 
+    mouseOverLine = (mouseOverRow) ->
+      circles = g.selectAll('circle.line-highlight').data(mouseOverRow.rankingData)
+      circles.enter()
+        .append('circle')
+        .attr
+          'class': 'line-highlight'
+          r: 3
+          stroke: 'hsl(240, 70%, 50%)'
+          'stroke-width': 2
+      # circles.exit().remove()
+      circles.attr
+        cx: (point) -> horizontalScale(point.x)
+        cy: (point) -> verticalOrderingScale(point.y)
+
+      g.selectAll('text.word').data(adjustedRows)
+        .style
+          # fill: (row) -> colourScale(row.rankingData[4].y)
+          opacity: 0
+        .filter (row) -> row is mouseOverRow
+        .style
+          # fill: 'red'
+          opacity: 1
+
+      g.selectAll('path.line').data(adjustedRows)
+        .attr
+          stroke: (row) -> colourScale(row.rankingData[4].y)
+        .filter (row) -> row is mouseOverRow
+        .attr
+          stroke: 'hsl(240, 70%, 50%)'
+
+      # lines = g.select('path').data(row).attr
+      #   stroke: 'red'
+
+      # lines.exit().attr
+      #   stroke: (row) -> colourScale(row.rankingData[4].y)
+
+
     # draw actual lines
     g.selectAll('path')
       .data(adjustedRows)
       .enter()
       .append('path')
-      .attr
+      .attr(
         'title': (row) -> row.word
         'class': 'line'
         'd': (row) ->
@@ -74,12 +111,14 @@ d3.csv('FreqWords5Year.csv')
             .interpolate('cardinal')
             .tension(0.8)
             # .interpolate('linear')
-            .x (d) -> horizontalScale(d.x)
-            .y (d) -> verticalOrderingScale(d.y)
+            .x (point) -> horizontalScale(point.x)
+            .y (point) -> verticalOrderingScale(point.y)
           )(row.rankingData)
         'stroke': (row) -> colourScale(row.rankingData[4].y)
         'stroke-width': 1.8
         'fill': 'none'
+      ).on('mouseover', mouseOverLine)
+      # .on('mouseout', mouseOutLine)
         # 'opacity': 0.8
 
     # draw on labels

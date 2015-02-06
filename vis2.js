@@ -28,7 +28,7 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
   });
   return rawRow;
 }).get(function(error, rows) {
-  var HEIGHT, WIDTH, adjustedRows, brush, brushes, colName, colourScale, focusLines, g, grouped, horizontalScale, rankingData, rowMatchesBrushes, svg, verticalOrderingScale, _i, _j, _len, _len1;
+  var HEIGHT, WIDTH, adjustedRows, brush, brushes, colName, colourScale, focusLines, g, grouped, horizontalScale, mouseOverLine, rankingData, rowMatchesBrushes, svg, verticalOrderingScale, _i, _j, _len, _len1;
   WIDTH = 600;
   HEIGHT = 600;
   svg = d3.select('#visualisation2').style({
@@ -67,16 +67,50 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
   horizontalScale = d3.scale.linear().domain([0, 4]).range([0, WIDTH - 20]);
   verticalOrderingScale = d3.scale.linear().domain([0, rows.length - 1]).range([0, HEIGHT]);
   colourScale = d3.scale.linear().domain([0, 40]).range(['hsl(240, 40%, 90%)', 'hsl(111, 60%, 30%)']);
+  mouseOverLine = function(mouseOverRow) {
+    var circles;
+    circles = g.selectAll('circle.line-highlight').data(mouseOverRow.rankingData);
+    circles.enter().append('circle').attr({
+      'class': 'line-highlight',
+      r: 3,
+      stroke: 'hsl(240, 70%, 50%)',
+      'stroke-width': 2
+    });
+    circles.attr({
+      cx: function(point) {
+        return horizontalScale(point.x);
+      },
+      cy: function(point) {
+        return verticalOrderingScale(point.y);
+      }
+    });
+    g.selectAll('text.word').data(adjustedRows).style({
+      opacity: 0
+    }).filter(function(row) {
+      return row === mouseOverRow;
+    }).style({
+      opacity: 1
+    });
+    return g.selectAll('path.line').data(adjustedRows).attr({
+      stroke: function(row) {
+        return colourScale(row.rankingData[4].y);
+      }
+    }).filter(function(row) {
+      return row === mouseOverRow;
+    }).attr({
+      stroke: 'hsl(240, 70%, 50%)'
+    });
+  };
   g.selectAll('path').data(adjustedRows).enter().append('path').attr({
     'title': function(row) {
       return row.word;
     },
     'class': 'line',
     'd': function(row) {
-      return (d3.svg.line().interpolate('cardinal').tension(0.8).x(function(d) {
-        return horizontalScale(d.x);
-      }).y(function(d) {
-        return verticalOrderingScale(d.y);
+      return (d3.svg.line().interpolate('cardinal').tension(0.8).x(function(point) {
+        return horizontalScale(point.x);
+      }).y(function(point) {
+        return verticalOrderingScale(point.y);
       }))(row.rankingData);
     },
     'stroke': function(row) {
@@ -84,7 +118,7 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     },
     'stroke-width': 1.8,
     'fill': 'none'
-  });
+  }).on('mouseover', mouseOverLine);
   g.selectAll('text').data(adjustedRows).enter().append('text').text(function(row) {
     return row.word;
   }).attr({
