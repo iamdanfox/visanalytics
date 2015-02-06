@@ -28,7 +28,7 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
   });
   return rawRow;
 }).get(function(error, rows) {
-  var HEIGHT, WIDTH, axis, g, height, i, lineData, max, min, svg, verticalScale, _i;
+  var HEIGHT, WIDTH, axis, colName, g, grouped, height, horizontalScale, i, max, min, rankingData, svg, verticalOrderingScale, verticalScale, _i, _j, _len;
   WIDTH = 800;
   HEIGHT = 380;
   svg = d3.select('#visualisation2').style({
@@ -38,6 +38,13 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     border: '1px solid #333'
   });
   g = svg.append('g').attr('transform', 'translate(100,100)');
+  grouped = {};
+  for (_i = 0, _len = COLUMN_NAMES.length; _i < _len; _i++) {
+    colName = COLUMN_NAMES[_i];
+    grouped[colName] = rows.map(function(row) {
+      return row[colName];
+    }).sort().reverse();
+  }
   min = d3.min(rows, function(row) {
     return d3.min(COLUMN_NAMES.map(function(colname) {
       return row[colname];
@@ -50,30 +57,31 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
   });
   console.log('min', min, 'max', max);
   verticalScale = d3.scale.linear().domain([min, max]).range([0, 500]);
-  axis = d3.svg.axis().scale(verticalScale).orient('right');
-  for (i = _i = 0; _i <= 4; i = ++_i) {
-    g.append('g').attr('transform', 'translate(' + (100 * i) + ',0)').call(axis);
+  horizontalScale = d3.scale.linear().domain([0, 4]).range([0, 580]);
+  verticalOrderingScale = d3.scale.linear().domain([0, rows.length - 1]).range([0, 500]);
+  axis = d3.svg.axis().scale(verticalOrderingScale).orient('right');
+  for (i = _j = 0; _j <= 4; i = ++_j) {
+    g.append('g').attr('transform', 'translate(' + horizontalScale(i) + ',0)').call(axis);
   }
-  lineData = function(row) {
-    var _j, _results;
+  rankingData = function(row) {
+    var _k, _results;
     _results = [];
-    for (i = _j = 0; _j <= 4; i = ++_j) {
+    for (i = _k = 0; _k <= 4; i = ++_k) {
       _results.push({
-        x: i * 100,
-        y: row[COLUMN_NAMES[i]]
+        x: i,
+        y: grouped[COLUMN_NAMES[i]].indexOf(row[COLUMN_NAMES[i]])
       });
     }
     return _results;
   };
-  console.log(lineData(rows[0]));
   g.selectAll('path').data(rows).enter().append('path').attr('d', function(row) {
     var l;
     l = d3.svg.line().x(function(d) {
-      return d.x;
+      return horizontalScale(d.x);
     }).y(function(d) {
-      return d.y;
+      return verticalOrderingScale(d.y);
     });
-    return l(lineData(row));
+    return l(rankingData(row));
   }).attr('stroke', 'rgba(0,0,255,0.3)').attr('stroke-width', 2).attr('fill', 'none');
   height = g[0][0].getBBox().height;
   svg.style({

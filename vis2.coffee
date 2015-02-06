@@ -38,6 +38,11 @@ d3.csv('FreqWords5Year.csv')
 
     g = svg.append('g').attr('transform', 'translate(100,100)')
 
+    # project data
+    grouped = {}
+    for colName in COLUMN_NAMES
+      grouped[colName] = rows.map((row) -> row[colName]).sort().reverse()
+
     # draw the vertical axes
     min = d3.min(rows, (row) -> d3.min(COLUMN_NAMES.map (colname) -> row[colname]))
     max = d3.max(rows, (row) -> d3.max(COLUMN_NAMES.map (colname) -> row[colname]))
@@ -48,21 +53,29 @@ d3.csv('FreqWords5Year.csv')
       .domain([min,max])
       .range([0, 500])
 
+    horizontalScale = d3.scale.linear().domain([0,4]).range([0,580])
+
+    verticalOrderingScale = d3.scale.linear()
+      .domain([0, rows.length - 1])
+      .range([0, 500])
+
     axis = d3.svg.axis()
-      .scale(verticalScale)
+      .scale(verticalOrderingScale)
       .orient('right')
 
     for i in [0..4]
       g.append('g')
-        .attr('transform', 'translate(' + (100 * i) + ',0)')
+        .attr('transform', 'translate(' + horizontalScale(i) + ',0)')
         .call(axis)
 
     # draw the actual lines
-    lineData = (row) -> for i in [0..4]
-      x: i*100
-      y: row[COLUMN_NAMES[i]]
+    # lineData = (row) -> for i in [0..4]
+    #   x: i
+    #   y: row[COLUMN_NAMES[i]]
 
-    console.log lineData(rows[0])
+    rankingData = (row) -> for i in [0..4]
+      x: i
+      y: grouped[COLUMN_NAMES[i]].indexOf row[COLUMN_NAMES[i]]
 
     g.selectAll('path')
       .data(rows)
@@ -70,9 +83,9 @@ d3.csv('FreqWords5Year.csv')
       .append('path')
       .attr('d', (row) ->
         l = d3.svg.line()
-          .x (d) -> d.x
-          .y (d) -> d.y
-        l(lineData(row))
+          .x (d) -> horizontalScale(d.x)
+          .y (d) -> verticalOrderingScale(d.y)
+        l(rankingData(row))
       )
       .attr('stroke', 'rgba(0,0,255,0.3)')
       .attr('stroke-width', 2)
