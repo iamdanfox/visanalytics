@@ -38,7 +38,7 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
   });
   return rawRow;
 }).get(function(error, rows) {
-  var brush, brushes, colourScale, coordinatesTransform, focusLines, g, horizontalScale, mouseOverLine, rowMatchesBrushes, scales, svg, transformedData, verticalFreqScale, wordScale, _i, _len;
+  var brush, brushes, colourScale, coordinatesTransform, focusLines, frequencyScale, g, horizontalScale, mouseOverLine, rowMatchesBrushes, svg, t, transformedData, verticalScales, wordScale, _i, _len;
   svg = d3.select('#visualisation2').style({
     width: WIDTH + 200,
     height: HEIGHT + 200,
@@ -48,14 +48,14 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     'transform': 'translate(70,100)'
   });
   horizontalScale = d3.scale.linear().domain([0, 5]).range([0, WIDTH - 20]);
-  verticalFreqScale = d3.scale.linear().domain([250, 0]).range([0, HEIGHT]);
+  frequencyScale = d3.scale.linear().domain([250, 0]).range([0, HEIGHT]);
   wordScale = d3.scale.ordinal().domain(rows.map(function(row) {
     return row.word;
   })).rangePoints([0, HEIGHT]);
   colourScale = d3.scale.category20b().domain([250, 0]);
-  scales = [verticalFreqScale, verticalFreqScale, verticalFreqScale, verticalFreqScale, verticalFreqScale, wordScale];
+  verticalScales = [frequencyScale, frequencyScale, frequencyScale, frequencyScale, frequencyScale, wordScale];
   coordinatesTransform = function(row) {
-    return d3.zip(scales, AXIS_NAMES).map(function(_arg, i) {
+    return d3.zip(verticalScales, AXIS_NAMES).map(function(_arg, i) {
       var colName, scale;
       scale = _arg[0], colName = _arg[1];
       return {
@@ -77,8 +77,8 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     circles = g.selectAll('circle.line-highlight').data(mouseOverRow.coordinates);
     circles.enter().append('circle').attr({
       'class': 'line-highlight',
-      r: 3,
-      stroke: lineColour,
+      'r': 3,
+      'stroke': lineColour,
       'stroke-width': 2
     });
     circles.attr({
@@ -90,13 +90,13 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
       }
     });
     return g.selectAll('path.line').data(transformedData).attr({
-      stroke: function(row) {
+      'stroke': function(row) {
         return colourScale(row.coordinates[4].y);
       }
     }).filter(function(row) {
       return row === mouseOverRow;
     }).attr({
-      stroke: lineColour
+      'stroke': lineColour
     });
   };
   g.selectAll('path').data(transformedData).enter().append('path').attr({
@@ -117,26 +117,36 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     'stroke-width': 1.8,
     'fill': 'none'
   }).on('mouseover', mouseOverLine);
-  brushes = scales.map(function(scale, i) {
-    var axis, brush, brushg;
+  brushes = verticalScales.map(function(scale, i) {
+    var axis, brush;
     axis = d3.svg.axis().scale(scale).orient('right');
     g.append('g').attr({
       'class': 'vertical-axis',
-      transform: 'translate(' + horizontalScale(i) + ',0)'
+      'transform': 'translate(' + horizontalScale(i) + ',0)'
     }).call(axis);
     brush = d3.svg.brush().y(scale);
-    brushg = g.append('g').attr({
+    g.append('g').call(brush).attr({
       'class': 'brush',
       'transform': 'translate(' + (horizontalScale(i) - 10) + ',0)',
       'fill': 'rgba(255,0,0,0.2)'
-    }).call(brush);
-    brushg.selectAll('rect').attr({
-      width: 40
+    }).selectAll('rect').attr({
+      'width': 40
     });
     return brush;
   });
+  t = g.selectAll('text.axis-name').data(AXIS_NAMES).enter().append('text').text(function(name) {
+    return name;
+  }).style({
+    'font-weight': 'bold'
+  }).attr({
+    'class': 'axis-name',
+    'x': function(name, i) {
+      return horizontalScale(i) - 15;
+    },
+    'y': -30
+  });
   rowMatchesBrushes = function(row) {
-    return d3.zip(row.coordinates, scales, brushes).filter(function(_arg) {
+    return d3.zip(row.coordinates, verticalScales, brushes).filter(function(_arg) {
       var brush, data, scale;
       data = _arg[0], scale = _arg[1], brush = _arg[2];
       return !brush.empty();

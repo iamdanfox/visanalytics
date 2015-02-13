@@ -40,21 +40,16 @@ d3.csv('FreqWords5Year.csv')
     g = svg.append('g').attr
       'transform': 'translate(70,100)'
 
-    # define scales
+    # define verticalScales
     horizontalScale = d3.scale.linear().domain([0,5]).range([0, WIDTH - 20])
-    verticalFreqScale = d3.scale.linear().domain([250, 0]).range([0, HEIGHT])
+    frequencyScale = d3.scale.linear().domain([250, 0]).range([0, HEIGHT])
     wordScale = d3.scale.ordinal().domain(rows.map (row) -> row.word).rangePoints([0, HEIGHT])
     colourScale = d3.scale.category20b().domain([250, 0])
-    scales = [verticalFreqScale,
-              verticalFreqScale,
-              verticalFreqScale,
-              verticalFreqScale,
-              verticalFreqScale,
-              wordScale]
+    verticalScales = [frequencyScale, frequencyScale, frequencyScale, frequencyScale, frequencyScale, wordScale]
 
     # transform data
     coordinatesTransform = (row) ->
-      d3.zip(scales, AXIS_NAMES).map ([scale, colName], i) ->
+      d3.zip(verticalScales, AXIS_NAMES).map ([scale, colName], i) ->
         x: horizontalScale(i)
         y: scale(row[colName])
 
@@ -71,8 +66,8 @@ d3.csv('FreqWords5Year.csv')
         .append('circle')
         .attr
           'class': 'line-highlight'
-          r: 3
-          stroke: lineColour
+          'r': 3
+          'stroke': lineColour
           'stroke-width': 2
       circles.attr
         cx: (point) -> point.x
@@ -80,10 +75,10 @@ d3.csv('FreqWords5Year.csv')
 
       g.selectAll('path.line').data(transformedData)
         .attr
-          stroke: (row) -> colourScale(row.coordinates[4].y)
+          'stroke': (row) -> colourScale(row.coordinates[4].y)
         .filter (row) -> row is mouseOverRow
         .attr
-          stroke: lineColour
+          'stroke': lineColour
 
     # draw actual lines, link to mouseOver behaviour
     g.selectAll('path')
@@ -106,33 +101,44 @@ d3.csv('FreqWords5Year.csv')
       ).on('mouseover', mouseOverLine)
 
     # draw on axes and brushes
-    brushes = scales.map (scale, i) ->
+    brushes = verticalScales.map (scale, i) ->
       axis = d3.svg.axis()
         .scale(scale)
         .orient('right')
 
       g.append('g').attr(
         'class': 'vertical-axis'
-        transform: 'translate(' + horizontalScale(i) + ',0)'
+        'transform': 'translate(' + horizontalScale(i) + ',0)'
       ).call(axis)
 
       brush = d3.svg.brush().y(scale)
 
-      brushg = g.append('g')
-        .attr(
+      g.append('g')
+        .call(brush)
+        .attr
           'class': 'brush'
           'transform': 'translate(' + (horizontalScale(i) - 10) + ',0)'
           'fill': 'rgba(255,0,0,0.2)'
-        ).call(brush)
-
-      brushg.selectAll('rect').attr
-        width: 40
+        .selectAll('rect').attr
+          'width': 40
 
       return brush
 
+    # draw on text labels
+    t = g.selectAll('text.axis-name')
+      .data(AXIS_NAMES)
+      .enter()
+      .append('text')
+      .text (name) -> name
+      .style 'font-weight': 'bold'
+      .attr
+        'class': 'axis-name'
+        'x': (name, i) -> horizontalScale(i) - 15
+        'y': -30
+
     # brushing behaviour
     rowMatchesBrushes = (row) ->
-      return d3.zip row.coordinates, scales, brushes
+      return d3.zip row.coordinates, verticalScales, brushes
         .filter ([data,scale,brush]) -> not brush.empty()
         .every ([data,scale,brush]) ->
           [lower, upper] = brush.extent()
