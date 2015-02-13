@@ -41,29 +41,40 @@ d3.csv('FreqWords5Year.csv')
       'transform': 'translate(70,100)'
 
     # project data
-    grouped = {}
-    for colName in COLUMN_NAMES
-      grouped[colName] = rows.map((row) -> row[colName]).sort().reverse()
+    # grouped = {}
+    # for colName in COLUMN_NAMES
+    #   grouped[colName] = rows.map((row) -> row[colName]).sort().reverse()
+
+
+    horizontalScale = d3.scale.linear().domain([0,5]).range([0, WIDTH - 20])
+    verticalOrderingScale = d3.scale.linear().domain([250, 0]).range([0, HEIGHT])
+    # verticalOrderingScale = d3.scale.linear().domain([0, rows.length - 1]).range([0, HEIGHT])
+
+    allWords = rows.map (row) -> row.word
+    wordScale = d3.scale.ordinal().domain(allWords).range([0, HEIGHT])
+
+    # colourScale = d3.scale.linear().domain([250, 0]).range(['hsl(240, 40%, 90%)', 'hsl(310, 60%, 30%)'])
+    colourScale = d3.scale.category20b().domain([250, 0])
+
 
     # rankingDataFn = (row) -> for i in [0..4]
     #   x: i
     #   y: grouped[COLUMN_NAMES[i]].indexOf row[COLUMN_NAMES[i]]
 
-    rawDataFn = (row) -> for i in [0..4]
-      x: i
-      y: row[COLUMN_NAMES[i]]
+    rawDataFn = (row) ->
+      timeData = for i in [0..4]
+        x: horizontalScale(i)
+        y: verticalOrderingScale(row[COLUMN_NAMES[i]])
+      # return timeData
+      return timeData.concat([
+        x: horizontalScale(5)
+        y: wordScale(row.word)
+      ])
 
     adjustedRows = rows.map (row) ->
       rankingData: rawDataFn(row)
       sum: row.sum
       word: row.word
-
-    horizontalScale = d3.scale.linear().domain([0,4]).range([0, WIDTH - 20])
-    verticalOrderingScale = d3.scale.linear().domain([250, 0]).range([0, HEIGHT])
-    # verticalOrderingScale = d3.scale.linear().domain([0, rows.length - 1]).range([0, HEIGHT])
-
-    # colourScale = d3.scale.linear().domain([250, 0]).range(['hsl(240, 40%, 90%)', 'hsl(310, 60%, 30%)'])
-    colourScale = d3.scale.category20b().domain([250, 0])
 
     mouseOverLine = (mouseOverRow) ->
       lineColour = 'black'
@@ -78,8 +89,8 @@ d3.csv('FreqWords5Year.csv')
           'stroke-width': 2
       # circles.exit().remove()
       circles.attr
-        cx: (point) -> horizontalScale(point.x)
-        cy: (point) -> verticalOrderingScale(point.y)
+        cx: (point) -> point.x
+        cy: (point) -> point.y
 
       g.selectAll('text.word').data(adjustedRows)
         .style
@@ -117,15 +128,13 @@ d3.csv('FreqWords5Year.csv')
             .interpolate('cardinal')
             .tension(0.8)
             # .interpolate('linear')
-            .x (point) -> horizontalScale(point.x)
-            .y (point) -> verticalOrderingScale(point.y)
+            .x (point) -> point.x
+            .y (point) -> point.y
           )(row.rankingData)
         'stroke': (row) -> colourScale(row.rankingData[4].y)
         'stroke-width': 1.8
         'fill': 'none'
       ).on('mouseover', mouseOverLine)
-      # .on('mouseout', mouseOutLine)
-        # 'opacity': 0.8
 
     # draw on labels
     g.selectAll('text')
@@ -146,10 +155,10 @@ d3.csv('FreqWords5Year.csv')
         .orient('right')
 
       g.append('g')
-        .attr
+        .attr(
           'class': 'vertical-axis'
           transform: 'translate(' + horizontalScale(i) + ',0)'
-        .call(axis)
+        ).call(axis)
 
       brush = d3.svg.brush()
         .y(verticalOrderingScale)
@@ -165,6 +174,28 @@ d3.csv('FreqWords5Year.csv')
         width: 40
 
       return brush
+
+
+    # draw on word axis:
+    wordAxis = d3.svg.axis()
+      .scale(wordScale)
+      .orient('right')
+
+    g.append('g').attr(
+      'class': 'vertical-axis'
+      transform: 'translate(' + horizontalScale(5) + ',0)'
+    ).call(wordAxis)
+
+    brush = d3.svg.brush()
+      .y(verticalOrderingScale)
+
+    brushg = g.append('g').attr(
+      'class': 'brush'
+      'transform': 'translate(' + (horizontalScale(5) - 10) + ',0)'
+      'fill': 'rgba(255,0,0,0.2)'
+    ).call(brush)
+
+    brushg.selectAll('rect').attr width: 40
 
     # brushing behaviour
     rowMatchesBrushes = (row) ->

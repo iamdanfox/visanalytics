@@ -28,7 +28,7 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
   });
   return rawRow;
 }).get(function(error, rows) {
-  var HEIGHT, WIDTH, adjustedRows, brush, brushes, colName, colourScale, focusLines, g, grouped, horizontalScale, mouseOverLine, rawDataFn, rowMatchesBrushes, svg, verticalOrderingScale, _i, _j, _len, _len1;
+  var HEIGHT, WIDTH, adjustedRows, allWords, brush, brushes, brushg, colourScale, focusLines, g, horizontalScale, mouseOverLine, rawDataFn, rowMatchesBrushes, svg, verticalOrderingScale, wordAxis, wordScale, _i, _len;
   WIDTH = 600;
   HEIGHT = 600;
   svg = d3.select('#visualisation2').style({
@@ -39,23 +39,32 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
   g = svg.append('g').attr({
     'transform': 'translate(70,100)'
   });
-  grouped = {};
-  for (_i = 0, _len = COLUMN_NAMES.length; _i < _len; _i++) {
-    colName = COLUMN_NAMES[_i];
-    grouped[colName] = rows.map(function(row) {
-      return row[colName];
-    }).sort().reverse();
-  }
+  horizontalScale = d3.scale.linear().domain([0, 5]).range([0, WIDTH - 20]);
+  verticalOrderingScale = d3.scale.linear().domain([250, 0]).range([0, HEIGHT]);
+  allWords = rows.map(function(row) {
+    return row.word;
+  });
+  wordScale = d3.scale.ordinal().domain(allWords).range([0, HEIGHT]);
+  colourScale = d3.scale.category20b().domain([250, 0]);
   rawDataFn = function(row) {
-    var i, _j, _results;
-    _results = [];
-    for (i = _j = 0; _j <= 4; i = ++_j) {
-      _results.push({
-        x: i,
-        y: row[COLUMN_NAMES[i]]
-      });
-    }
-    return _results;
+    var i, timeData;
+    timeData = (function() {
+      var _i, _results;
+      _results = [];
+      for (i = _i = 0; _i <= 4; i = ++_i) {
+        _results.push({
+          x: horizontalScale(i),
+          y: verticalOrderingScale(row[COLUMN_NAMES[i]])
+        });
+      }
+      return _results;
+    })();
+    return timeData.concat([
+      {
+        x: horizontalScale(5),
+        y: wordScale(row.word)
+      }
+    ]);
   };
   adjustedRows = rows.map(function(row) {
     return {
@@ -64,9 +73,6 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
       word: row.word
     };
   });
-  horizontalScale = d3.scale.linear().domain([0, 4]).range([0, WIDTH - 20]);
-  verticalOrderingScale = d3.scale.linear().domain([250, 0]).range([0, HEIGHT]);
-  colourScale = d3.scale.category20b().domain([250, 0]);
   mouseOverLine = function(mouseOverRow) {
     var circles, lineColour;
     lineColour = 'black';
@@ -79,10 +85,10 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     });
     circles.attr({
       cx: function(point) {
-        return horizontalScale(point.x);
+        return point.x;
       },
       cy: function(point) {
-        return verticalOrderingScale(point.y);
+        return point.y;
       }
     });
     g.selectAll('text.word').data(adjustedRows).style({
@@ -109,9 +115,9 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     'class': 'line',
     'd': function(row) {
       return (d3.svg.line().interpolate('cardinal').tension(0.8).x(function(point) {
-        return horizontalScale(point.x);
+        return point.x;
       }).y(function(point) {
-        return verticalOrderingScale(point.y);
+        return point.y;
       }))(row.rankingData);
     },
     'stroke': function(row) {
@@ -150,9 +156,23 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     });
     return brush;
   });
+  wordAxis = d3.svg.axis().scale(wordScale).orient('right');
+  g.append('g').attr({
+    'class': 'vertical-axis',
+    transform: 'translate(' + horizontalScale(5) + ',0)'
+  }).call(wordAxis);
+  brush = d3.svg.brush().y(verticalOrderingScale);
+  brushg = g.append('g').attr({
+    'class': 'brush',
+    'transform': 'translate(' + (horizontalScale(5) - 10) + ',0)',
+    'fill': 'rgba(255,0,0,0.2)'
+  }).call(brush);
+  brushg.selectAll('rect').attr({
+    width: 40
+  });
   rowMatchesBrushes = function(row) {
-    var i, lower, upper, _j, _ref, _ref1;
-    for (i = _j = 0; _j <= 4; i = ++_j) {
+    var i, lower, upper, _i, _ref, _ref1;
+    for (i = _i = 0; _i <= 4; i = ++_i) {
       if (!(!brushes[i].empty())) {
         continue;
       }
@@ -170,8 +190,8 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
       'opacity': 0.8
     });
   };
-  for (_j = 0, _len1 = brushes.length; _j < _len1; _j++) {
-    brush = brushes[_j];
+  for (_i = 0, _len = brushes.length; _i < _len; _i++) {
+    brush = brushes[_i];
     brush.on('brush', focusLines);
   }
 });
