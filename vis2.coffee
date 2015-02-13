@@ -59,11 +59,10 @@ makeVisualisationContainer = ->
       .attr
         'transform': 'translate(70, 100)'
 
-makeVerticalScales = (rows) ->
-  wordScale = d3.scale.ordinal()
+makeWordScale = (rows) ->
+  return d3.scale.ordinal()
     .domain rows.map (row) -> row.word
     .rangePoints [0, HEIGHT]
-  return [FREQ_SCALE, FREQ_SCALE, FREQ_SCALE, FREQ_SCALE, FREQ_SCALE, wordScale]
 
 # apply horizontal and vertical scales to the data (and convert keys to array)
 transformRows = (rows, verticalScales) ->
@@ -214,7 +213,8 @@ d3.csv 'FreqWords5Year.csv'
   .get (error, rows) ->
     console.assert not error?, 'Must load data correctly'
 
-    verticalScales = makeVerticalScales rows
+    wordScale = makeWordScale rows
+    verticalScales = [FREQ_SCALE, FREQ_SCALE, FREQ_SCALE, FREQ_SCALE, FREQ_SCALE, wordScale]
 
     transformedRows = transformRows rows, verticalScales
     drawLines g, transformedRows

@@ -24,7 +24,7 @@ Your software must have the following essential functionality:
 /*
 This section defines constants that are independent of the data
  */
-var AXIS_NAMES, COLOUR_SCALE, FREQ_SCALE, HEIGHT, HORIZONTAL_SCALE, MOUSEOVER_LINE_COLOUR, WIDTH, YEAR_COLUMNS, drawAxes, drawBrushes, drawLines, drawTextLabels, g, makeAxes, makeBrushes, makeMouseoverCallback, makePathDFromCoordinates, makeVerticalScales, makeVisualisationContainer, transformRows;
+var AXIS_NAMES, COLOUR_SCALE, FREQ_SCALE, HEIGHT, HORIZONTAL_SCALE, MOUSEOVER_LINE_COLOUR, WIDTH, YEAR_COLUMNS, drawAxes, drawBrushes, drawLines, drawTextLabels, g, makeAxes, makeBrushes, makeMouseoverCallback, makePathDFromCoordinates, makeVisualisationContainer, makeWordScale, transformRows;
 
 YEAR_COLUMNS = ['1990-1994', '1995-1999', '2000-2004', '2005-2009', '2010-2014'];
 
@@ -57,12 +57,10 @@ makeVisualisationContainer = function() {
   });
 };
 
-makeVerticalScales = function(rows) {
-  var wordScale;
-  wordScale = d3.scale.ordinal().domain(rows.map(function(row) {
+makeWordScale = function(rows) {
+  return d3.scale.ordinal().domain(rows.map(function(row) {
     return row.word;
   })).rangePoints([0, HEIGHT]);
-  return [FREQ_SCALE, FREQ_SCALE, FREQ_SCALE, FREQ_SCALE, FREQ_SCALE, wordScale];
 };
 
 transformRows = function(rows, verticalScales) {
@@ -238,9 +236,10 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
   }
   return rawRow;
 }).get(function(error, rows) {
-  var axes, brushes, transformedRows, verticalScales;
+  var axes, brushes, transformedRows, verticalScales, wordScale;
   console.assert(error == null, 'Must load data correctly');
-  verticalScales = makeVerticalScales(rows);
+  wordScale = makeWordScale(rows);
+  verticalScales = [FREQ_SCALE, FREQ_SCALE, FREQ_SCALE, FREQ_SCALE, FREQ_SCALE, wordScale];
   transformedRows = transformRows(rows, verticalScales);
   drawLines(g, transformedRows);
   axes = makeAxes(verticalScales);
