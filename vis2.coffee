@@ -25,18 +25,28 @@ NUMBER_COLUMNS = YEAR_COLUMNS.concat('sum')
 AXIS_NAMES = YEAR_COLUMNS.concat(['word'])
 WIDTH = 600
 HEIGHT = 600
-horizontalScale = d3.scale.linear().domain([0,5]).range([0, WIDTH - 20])
 
+HORIZONTAL_SCALE = d3.scale.linear().domain([0,5]).range([0, WIDTH - 20])
+COLOUR_SCALE = d3.scale.category20b().domain([250, 0])
+
+makeSvgGroup = ->
+  # initialisation stuff
+  return d3.select('#visualisation2').style
+    width: WIDTH + 200
+    height: HEIGHT + 200
+    background: '#444'
+  .append('g').attr
+    'transform': 'translate(70,100)'
 
 transformData = (rows, verticalScales) ->
   rows.map (row) ->
     coordinates: d3.zip(verticalScales, AXIS_NAMES).map ([scale, colName], i) ->
-      x: horizontalScale(i)
+      x: HORIZONTAL_SCALE(i)
       y: scale(row[colName])
     sum: row.sum
     word: row.word
 
-mouseOverLineCallback = (g, transformedData, colourScale) ->
+mouseOverLineCallback = (g, transformedData) ->
   # make lines highlight when you hover over one
   return (mouseOverRow) ->
     lineColour = 'black'
@@ -54,12 +64,12 @@ mouseOverLineCallback = (g, transformedData, colourScale) ->
 
     g.selectAll('path.line').data(transformedData)
       .attr
-        'stroke': (row) -> colourScale(row.coordinates[4].y)
+        'stroke': (row) -> COLOUR_SCALE(row.coordinates[4].y)
       .filter (row) -> row is mouseOverRow
       .attr
         'stroke': lineColour
 
-drawPathsOntoSvg = (g, transformedData, colourScale) ->
+drawPathsOntoSvg = (g, transformedData) ->
   g.selectAll('path')
     .data(transformedData)
     .enter()
@@ -74,10 +84,10 @@ drawPathsOntoSvg = (g, transformedData, colourScale) ->
           .x (point) -> point.x
           .y (point) -> point.y
         )(row.coordinates)
-      'stroke': (row) -> colourScale(row.coordinates[4].y)
+      'stroke': (row) -> COLOUR_SCALE(row.coordinates[4].y)
       'stroke-width': 1.8
       'fill': 'none'
-    ).on('mouseover', mouseOverLineCallback(g, transformedData, colourScale))
+    ).on('mouseover', mouseOverLineCallback(g, transformedData))
 
 makeBrushes = (g, verticalScales) ->
   brushes = verticalScales.map (scale) -> d3.svg.brush().y(scale)
@@ -106,14 +116,14 @@ drawBrushesAndAxes = (g, brushes, axes) ->
   d3.zip(brushes, axes).map ([brush, axis], i) ->
     g.append('g').attr(
       'class': 'vertical-axis'
-      'transform': 'translate(' + horizontalScale(i) + ',0)'
+      'transform': 'translate(' + HORIZONTAL_SCALE(i) + ',0)'
     ).call(axis)
 
     g.append('g')
       .call(brush)
       .attr
         'class': 'brush'
-        'transform': 'translate(' + (horizontalScale(i) - 10) + ',0)'
+        'transform': 'translate(' + (HORIZONTAL_SCALE(i) - 10) + ',0)'
         'fill': 'rgba(255,0,0,0.2)'
       .selectAll('rect').attr
         'width': 40
@@ -127,45 +137,31 @@ drawTextLabels = (g) ->
     .style 'font-weight': 'bold'
     .attr
       'class': 'axis-name'
-      'x': (name, i) -> horizontalScale(i) - 15
+      'x': (name, i) -> HORIZONTAL_SCALE(i) - 15
       'y': -30
 
 
+g = makeSvgGroup()
+drawTextLabels(g)
+
 
 d3.csv('FreqWords5Year.csv')
-  .row( (rawRow) ->
+  .row (rawRow) ->
     NUMBER_COLUMNS.map (columnName) -> rawRow[columnName] = parseInt(rawRow[columnName], 10)
     rawRow
-  )
-  .get((error, rows) ->
-    # initialisation stuff
-    svg = d3.select('#visualisation2').style
-      width: WIDTH + 200
-      height: HEIGHT + 200
-      background: '#444'
-    g = svg.append('g').attr
-      'transform': 'translate(70,100)'
-
+  .get (error, rows) ->
     # define verticalScales
     frequencyScale = d3.scale.linear().domain([250, 0]).range([0, HEIGHT])
     wordScale = d3.scale.ordinal().domain(rows.map (row) -> row.word).rangePoints([0, HEIGHT])
-    colourScale = d3.scale.category20b().domain([250, 0])
     verticalScales = [frequencyScale, frequencyScale, frequencyScale, frequencyScale, frequencyScale, wordScale]
 
     # transform data
     transformedData = transformData(rows, verticalScales)
 
     # draw actual lines, link to mouseOver behaviour
-    drawPathsOntoSvg(g, transformedData, colourScale)
+    drawPathsOntoSvg(g, transformedData)
 
     # brushes and axes
     brushes = makeBrushes(g, verticalScales)
     axes = verticalScales.map (scale) -> d3.svg.axis().scale(scale).orient('right')
     drawBrushesAndAxes(g, brushes, axes)
-
-    # draw on text labels
-    drawTextLabels(g)
-
-    return
-  )
-

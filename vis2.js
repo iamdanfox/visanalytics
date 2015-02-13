@@ -20,7 +20,7 @@ Your software must have the following essential functionality:
  - It is recommended to set all five numerical axes to the range [0, 250]. However, you may experiment
  with other ranges for these axes.
  */
-var AXIS_NAMES, HEIGHT, NUMBER_COLUMNS, WIDTH, YEAR_COLUMNS, drawBrushesAndAxes, drawPathsOntoSvg, drawTextLabels, horizontalScale, makeBrushes, mouseOverLineCallback, transformData;
+var AXIS_NAMES, COLOUR_SCALE, HEIGHT, HORIZONTAL_SCALE, NUMBER_COLUMNS, WIDTH, YEAR_COLUMNS, drawBrushesAndAxes, drawPathsOntoSvg, drawTextLabels, g, makeBrushes, makeSvgGroup, mouseOverLineCallback, transformData;
 
 YEAR_COLUMNS = ['1990-1994', '1995-1999', '2000-2004', '2005-2009', '2010-2014'];
 
@@ -32,7 +32,19 @@ WIDTH = 600;
 
 HEIGHT = 600;
 
-horizontalScale = d3.scale.linear().domain([0, 5]).range([0, WIDTH - 20]);
+HORIZONTAL_SCALE = d3.scale.linear().domain([0, 5]).range([0, WIDTH - 20]);
+
+COLOUR_SCALE = d3.scale.category20b().domain([250, 0]);
+
+makeSvgGroup = function() {
+  return d3.select('#visualisation2').style({
+    width: WIDTH + 200,
+    height: HEIGHT + 200,
+    background: '#444'
+  }).append('g').attr({
+    'transform': 'translate(70,100)'
+  });
+};
 
 transformData = function(rows, verticalScales) {
   return rows.map(function(row) {
@@ -41,7 +53,7 @@ transformData = function(rows, verticalScales) {
         var colName, scale;
         scale = _arg[0], colName = _arg[1];
         return {
-          x: horizontalScale(i),
+          x: HORIZONTAL_SCALE(i),
           y: scale(row[colName])
         };
       }),
@@ -51,7 +63,7 @@ transformData = function(rows, verticalScales) {
   });
 };
 
-mouseOverLineCallback = function(g, transformedData, colourScale) {
+mouseOverLineCallback = function(g, transformedData) {
   return function(mouseOverRow) {
     var circles, lineColour;
     lineColour = 'black';
@@ -72,7 +84,7 @@ mouseOverLineCallback = function(g, transformedData, colourScale) {
     });
     return g.selectAll('path.line').data(transformedData).attr({
       'stroke': function(row) {
-        return colourScale(row.coordinates[4].y);
+        return COLOUR_SCALE(row.coordinates[4].y);
       }
     }).filter(function(row) {
       return row === mouseOverRow;
@@ -82,7 +94,7 @@ mouseOverLineCallback = function(g, transformedData, colourScale) {
   };
 };
 
-drawPathsOntoSvg = function(g, transformedData, colourScale) {
+drawPathsOntoSvg = function(g, transformedData) {
   return g.selectAll('path').data(transformedData).enter().append('path').attr({
     'title': function(row) {
       return row.word;
@@ -96,11 +108,11 @@ drawPathsOntoSvg = function(g, transformedData, colourScale) {
       }))(row.coordinates);
     },
     'stroke': function(row) {
-      return colourScale(row.coordinates[4].y);
+      return COLOUR_SCALE(row.coordinates[4].y);
     },
     'stroke-width': 1.8,
     'fill': 'none'
-  }).on('mouseover', mouseOverLineCallback(g, transformedData, colourScale));
+  }).on('mouseover', mouseOverLineCallback(g, transformedData));
 };
 
 makeBrushes = function(g, verticalScales) {
@@ -143,11 +155,11 @@ drawBrushesAndAxes = function(g, brushes, axes) {
     brush = _arg[0], axis = _arg[1];
     g.append('g').attr({
       'class': 'vertical-axis',
-      'transform': 'translate(' + horizontalScale(i) + ',0)'
+      'transform': 'translate(' + HORIZONTAL_SCALE(i) + ',0)'
     }).call(axis);
     return g.append('g').call(brush).attr({
       'class': 'brush',
-      'transform': 'translate(' + (horizontalScale(i) - 10) + ',0)',
+      'transform': 'translate(' + (HORIZONTAL_SCALE(i) - 10) + ',0)',
       'fill': 'rgba(255,0,0,0.2)'
     }).selectAll('rect').attr({
       'width': 40
@@ -163,11 +175,15 @@ drawTextLabels = function(g) {
   }).attr({
     'class': 'axis-name',
     'x': function(name, i) {
-      return horizontalScale(i) - 15;
+      return HORIZONTAL_SCALE(i) - 15;
     },
     'y': -30
   });
 };
+
+g = makeSvgGroup();
+
+drawTextLabels(g);
 
 d3.csv('FreqWords5Year.csv').row(function(rawRow) {
   NUMBER_COLUMNS.map(function(columnName) {
@@ -175,27 +191,17 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
   });
   return rawRow;
 }).get(function(error, rows) {
-  var axes, brushes, colourScale, frequencyScale, g, svg, transformedData, verticalScales, wordScale;
-  svg = d3.select('#visualisation2').style({
-    width: WIDTH + 200,
-    height: HEIGHT + 200,
-    background: '#444'
-  });
-  g = svg.append('g').attr({
-    'transform': 'translate(70,100)'
-  });
+  var axes, brushes, frequencyScale, transformedData, verticalScales, wordScale;
   frequencyScale = d3.scale.linear().domain([250, 0]).range([0, HEIGHT]);
   wordScale = d3.scale.ordinal().domain(rows.map(function(row) {
     return row.word;
   })).rangePoints([0, HEIGHT]);
-  colourScale = d3.scale.category20b().domain([250, 0]);
   verticalScales = [frequencyScale, frequencyScale, frequencyScale, frequencyScale, frequencyScale, wordScale];
   transformedData = transformData(rows, verticalScales);
-  drawPathsOntoSvg(g, transformedData, colourScale);
+  drawPathsOntoSvg(g, transformedData);
   brushes = makeBrushes(g, verticalScales);
   axes = verticalScales.map(function(scale) {
     return d3.svg.axis().scale(scale).orient('right');
   });
-  drawBrushesAndAxes(g, brushes, axes);
-  drawTextLabels(g);
+  return drawBrushesAndAxes(g, brushes, axes);
 });
