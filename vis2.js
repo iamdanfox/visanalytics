@@ -24,7 +24,7 @@ Your software must have the following essential functionality:
 /*
 This section defines constants that are independent of the data
  */
-var AXIS_NAMES, COLOUR_SCALE, FREQ_SCALE, HEIGHT, HORIZONTAL_SCALE, MOUSEOVER_LINE_COLOUR, WIDTH, YEAR_COLUMNS, drawAxes, drawBrushes, drawLines, drawTextLabels, g, makeAxes, makeBrushes, makeMouseoverCallback, makeVerticalScales, makeVisualisationContainer, transformRows;
+var AXIS_NAMES, COLOUR_SCALE, FREQ_SCALE, HEIGHT, HORIZONTAL_SCALE, MOUSEOVER_LINE_COLOUR, WIDTH, YEAR_COLUMNS, drawAxes, drawBrushes, drawLines, drawTextLabels, g, makeAxes, makeBrushes, makeMouseoverCallback, makePathDFromCoordinates, makeVerticalScales, makeVisualisationContainer, transformRows;
 
 YEAR_COLUMNS = ['1990-1994', '1995-1999', '2000-2004', '2005-2009', '2010-2014'];
 
@@ -49,9 +49,9 @@ The following functions return create and return elements of the visualisation.
 
 makeVisualisationContainer = function() {
   return d3.select('#visualisation2').style({
-    width: WIDTH + 200,
-    height: HEIGHT + 200,
-    background: '#444'
+    'width': WIDTH + 200,
+    'height': HEIGHT + 200,
+    'background': '#444'
   }).append('g').attr({
     'transform': 'translate(70, 100)'
   });
@@ -72,8 +72,8 @@ transformRows = function(rows, verticalScales) {
         var axisName, scale;
         scale = _arg[0], axisName = _arg[1];
         return {
-          x: HORIZONTAL_SCALE(i),
-          y: scale(row[axisName])
+          'x': HORIZONTAL_SCALE(i),
+          'y': scale(row[axisName])
         };
       }),
       word: row.word
@@ -149,6 +149,12 @@ makeMouseoverCallback = function(g, transformedRows) {
   };
 };
 
+makePathDFromCoordinates = d3.svg.line().interpolate('cardinal').tension(0.8).x(function(point) {
+  return point.x;
+}).y(function(point) {
+  return point.y;
+});
+
 
 /*
 The following functions simply draw things onto the specified container `g`
@@ -169,45 +175,45 @@ drawTextLabels = function(g) {
 };
 
 drawLines = function(g, transformedRows) {
-  g.selectAll('path').data(transformedRows).enter().append('path').attr({
+  g.selectAll('path.line').data(transformedRows).enter().append('path').on('mouseover', makeMouseoverCallback(g, transformedRows)).attr({
+    'class': 'line',
+    'stroke-width': 1.8,
+    'fill': 'none',
+    'stroke': function(row) {
+      return COLOUR_SCALE(row.coordinates[5].y);
+    },
     'title': function(row) {
       return row.word;
     },
-    'class': 'line',
     'd': function(row) {
-      return (d3.svg.line().interpolate('cardinal').tension(0.8).x(function(point) {
-        return point.x;
-      }).y(function(point) {
-        return point.y;
-      }))(row.coordinates);
-    },
-    'stroke': function(row) {
-      return COLOUR_SCALE(row.coordinates[4].y);
-    },
-    'stroke-width': 1.8,
-    'fill': 'none'
-  }).on('mouseover', makeMouseoverCallback(g, transformedRows));
-};
-
-drawAxes = function(g, axes) {
-  axes.map(function(axis, i) {
-    return g.append('g').attr({
-      'class': 'vertical-axis',
-      'transform': 'translate(' + HORIZONTAL_SCALE(i) + ',0)'
-    }).call(axis);
+      return makePathDFromCoordinates(row.coordinates);
+    }
   });
 };
 
+drawAxes = function(g, axes) {
+  var axis, i;
+  for (i in axes) {
+    axis = axes[i];
+    g.append('g').call(axis).attr({
+      'class': 'vertical-axis',
+      'transform': 'translate(' + HORIZONTAL_SCALE(i) + ',0)'
+    });
+  }
+};
+
 drawBrushes = function(g, brushes) {
-  brushes.map(function(brush, i) {
-    return g.append('g').call(brush).attr({
+  var brush, i;
+  for (i in brushes) {
+    brush = brushes[i];
+    g.append('g').call(brush).attr({
       'class': 'brush',
       'transform': 'translate(' + (HORIZONTAL_SCALE(i) - 10) + ',0)',
       'fill': 'rgba(255,0,0,0.2)'
     }).selectAll('rect').attr({
       'width': 40
     });
-  });
+  }
 };
 
 

@@ -52,11 +52,12 @@ The following functions return create and return elements of the visualisation.
 makeVisualisationContainer = ->
   return d3.select '#visualisation2'
     .style
-      width: WIDTH + 200
-      height: HEIGHT + 200
-      background: '#444'
+      'width':      WIDTH + 200
+      'height':     HEIGHT + 200
+      'background': '#444'
     .append 'g'
-      .attr 'transform': 'translate(70, 100)'
+      .attr
+        'transform': 'translate(70, 100)'
 
 makeVerticalScales = (rows) ->
   wordScale = d3.scale.ordinal()
@@ -68,8 +69,8 @@ makeVerticalScales = (rows) ->
 transformRows = (rows, verticalScales) ->
   return rows.map (row) ->
     coordinates: d3.zip(verticalScales, AXIS_NAMES).map ([scale, axisName], i) ->
-      x: HORIZONTAL_SCALE i
-      y: scale row[axisName]
+      'x': HORIZONTAL_SCALE i
+      'y': scale row[axisName]
     word: row.word
 
 makeAxes = (verticalScales) ->
@@ -111,9 +112,9 @@ makeMouseoverCallback = (g, transformedRows) ->
     circles.enter()
       .append 'circle'
       .attr
-        'class': 'line-highlight'
-        'r': 3
-        'stroke': MOUSEOVER_LINE_COLOUR
+        'class':        'line-highlight'
+        'r':            3
+        'stroke':       MOUSEOVER_LINE_COLOUR
         'stroke-width': 2
     circles.attr
       'cx': (point) -> point.x
@@ -127,6 +128,13 @@ makeMouseoverCallback = (g, transformedRows) ->
       .attr
         'stroke': MOUSEOVER_LINE_COLOUR
 
+# nb, this is actually a function now
+makePathDFromCoordinates = d3.svg.line()
+  .interpolate 'cardinal'
+  .tension 0.8
+  .x (point) -> point.x
+  .y (point) -> point.y
+
 
 
 ###
@@ -139,45 +147,40 @@ drawTextLabels = (g) ->
     .enter()
     .append 'text'
     .text (name) -> name
-    .style 'font-weight': 'bold'
+    .style
+      'font-weight': 'bold'
     .attr
       'class': 'axis-name'
-      'x': (name, i) -> HORIZONTAL_SCALE(i) - 15
-      'y': -30
+      'x':     (name, i) -> HORIZONTAL_SCALE(i) - 15
+      'y':     -30
   return
 
 drawLines = (g, transformedRows) ->
-  g.selectAll 'path'
+  g.selectAll 'path.line'
     .data transformedRows
     .enter()
     .append 'path'
-    .attr
-      'title': (row) -> row.word
-      'class': 'line'
-      'd': (row) ->
-        (d3.svg.line()
-          .interpolate 'cardinal'
-          .tension 0.8
-          .x (point) -> point.x
-          .y (point) -> point.y
-        )(row.coordinates)
-      'stroke': (row) -> COLOUR_SCALE row.coordinates[4].y
-      'stroke-width': 1.8
-      'fill': 'none'
     .on 'mouseover', makeMouseoverCallback(g, transformedRows)
+    .attr
+      'class':        'line'
+      'stroke-width': 1.8
+      'fill':         'none'
+      'stroke':       (row) -> COLOUR_SCALE row.coordinates[5].y
+      'title':        (row) -> row.word
+      'd':            (row) -> makePathDFromCoordinates row.coordinates
   return
 
 drawAxes = (g, axes) ->
-  axes.map (axis, i) ->
+  for i, axis of axes
     g.append 'g'
+      .call axis
       .attr
         'class': 'vertical-axis'
         'transform': 'translate(' + HORIZONTAL_SCALE(i) + ',0)'
-      .call axis
   return
 
 drawBrushes = (g, brushes) ->
-  brushes.map (brush, i) ->
+  for i, brush of brushes
     g.append 'g'
       .call brush
       .attr
