@@ -59,16 +59,18 @@ d3.csv('FreqWords5Year.csv')
     # colourScale = d3.scale.category20c().domain([36,1000]) # for sum attribute
 
     colourScale = d3.scale.linear().domain([0, 40]).range([
-      'hsl(240, 40%, 90%)', 'hsl(111, 60%, 30%)'])
+      'hsl(240, 40%, 90%)', 'hsl(310, 60%, 30%)'])
 
     mouseOverLine = (mouseOverRow) ->
+      lineColour = 'black'
+
       circles = g.selectAll('circle.line-highlight').data(mouseOverRow.rankingData)
       circles.enter()
         .append('circle')
         .attr
           'class': 'line-highlight'
           r: 3
-          stroke: 'hsl(240, 70%, 50%)'
+          stroke: lineColour
           'stroke-width': 2
       # circles.exit().remove()
       circles.attr
@@ -89,7 +91,7 @@ d3.csv('FreqWords5Year.csv')
           stroke: (row) -> colourScale(row.rankingData[4].y)
         .filter (row) -> row is mouseOverRow
         .attr
-          stroke: 'hsl(240, 70%, 50%)'
+          stroke: lineColour
 
       # lines = g.select('path').data(row).attr
       #   stroke: 'red'

@@ -66,14 +66,15 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
   });
   horizontalScale = d3.scale.linear().domain([0, 4]).range([0, WIDTH - 20]);
   verticalOrderingScale = d3.scale.linear().domain([0, rows.length - 1]).range([0, HEIGHT]);
-  colourScale = d3.scale.linear().domain([0, 40]).range(['hsl(240, 40%, 90%)', 'hsl(111, 60%, 30%)']);
+  colourScale = d3.scale.linear().domain([0, 40]).range(['hsl(240, 40%, 90%)', 'hsl(310, 60%, 30%)']);
   mouseOverLine = function(mouseOverRow) {
-    var circles;
+    var circles, lineColour;
+    lineColour = 'black';
     circles = g.selectAll('circle.line-highlight').data(mouseOverRow.rankingData);
     circles.enter().append('circle').attr({
       'class': 'line-highlight',
       r: 3,
-      stroke: 'hsl(240, 70%, 50%)',
+      stroke: lineColour,
       'stroke-width': 2
     });
     circles.attr({
@@ -98,7 +99,7 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     }).filter(function(row) {
       return row === mouseOverRow;
     }).attr({
-      stroke: 'hsl(240, 70%, 50%)'
+      stroke: lineColour
     });
   };
   g.selectAll('path').data(adjustedRows).enter().append('path').attr({
