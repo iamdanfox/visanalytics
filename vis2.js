@@ -28,7 +28,7 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
   });
   return rawRow;
 }).get(function(error, rows) {
-  var HEIGHT, WIDTH, adjustedRows, allWords, brush, brushes, brushg, colourScale, focusLines, g, horizontalScale, mouseOverLine, rawDataFn, rowMatchesBrushes, svg, verticalOrderingScale, wordAxis, wordScale, _i, _len;
+  var HEIGHT, WIDTH, adjustedRows, allWords, brush, brushes, colourScale, focusLines, g, horizontalScale, mouseOverLine, rawDataFn, rowMatchesBrushes, svg, verticalOrderingScale, wordAxis, wordBrush, wordBrushG, wordScale, _i, _len, _ref;
   WIDTH = 600;
   HEIGHT = 600;
   svg = d3.select('#visualisation2').style({
@@ -44,7 +44,7 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
   allWords = rows.map(function(row) {
     return row.word;
   });
-  wordScale = d3.scale.ordinal().domain(allWords).range([0, HEIGHT]);
+  wordScale = d3.scale.ordinal().domain(allWords).rangePoints([0, HEIGHT]);
   colourScale = d3.scale.category20b().domain([250, 0]);
   rawDataFn = function(row) {
     var i, timeData;
@@ -91,13 +91,6 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
         return point.y;
       }
     });
-    g.selectAll('text.word').data(adjustedRows).style({
-      opacity: 0
-    }).filter(function(row) {
-      return row === mouseOverRow;
-    }).style({
-      opacity: 1
-    });
     return g.selectAll('path.line').data(adjustedRows).attr({
       stroke: function(row) {
         return colourScale(row.rankingData[4].y);
@@ -126,18 +119,6 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     'stroke-width': 1.8,
     'fill': 'none'
   }).on('mouseover', mouseOverLine);
-  g.selectAll('text').data(adjustedRows).enter().append('text').text(function(row) {
-    return row.word;
-  }).attr({
-    'class': 'word',
-    x: WIDTH + 15,
-    y: function(row) {
-      return verticalOrderingScale(row.rankingData[4].y);
-    },
-    fill: function(row) {
-      return colourScale(row.rankingData[4].y);
-    }
-  });
   brushes = [0, 1, 2, 3, 4].map(function(i) {
     var axis, brush, brushg;
     axis = d3.svg.axis().scale(verticalOrderingScale).orient('right');
@@ -161,23 +142,29 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     'class': 'vertical-axis',
     transform: 'translate(' + horizontalScale(5) + ',0)'
   }).call(wordAxis);
-  brush = d3.svg.brush().y(verticalOrderingScale);
-  brushg = g.append('g').attr({
+  wordBrush = d3.svg.brush().y(wordScale);
+  wordBrushG = g.append('g').attr({
     'class': 'brush',
     'transform': 'translate(' + (horizontalScale(5) - 10) + ',0)',
     'fill': 'rgba(255,0,0,0.2)'
-  }).call(brush);
-  brushg.selectAll('rect').attr({
+  }).call(wordBrush);
+  wordBrushG.selectAll('rect').attr({
     width: 40
   });
   rowMatchesBrushes = function(row) {
-    var i, lower, upper, _i, _ref, _ref1;
+    var i, l, lower, u, upper, _i, _ref, _ref1, _ref2, _ref3;
     for (i = _i = 0; _i <= 4; i = ++_i) {
       if (!(!brushes[i].empty())) {
         continue;
       }
       _ref = brushes[i].extent(), lower = _ref[0], upper = _ref[1];
-      if (!((lower <= (_ref1 = row.rankingData[i].y) && _ref1 <= upper))) {
+      if (!((lower <= (_ref1 = verticalOrderingScale.invert(row.rankingData[i].y)) && _ref1 <= upper))) {
+        return false;
+      }
+    }
+    if (!wordBrush.empty()) {
+      _ref2 = wordBrush.extent(), l = _ref2[0], u = _ref2[1];
+      if (!((l <= (_ref3 = row.rankingData[5].y) && _ref3 <= u))) {
         return false;
       }
     }
@@ -190,8 +177,9 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
       'opacity': 0.8
     });
   };
-  for (_i = 0, _len = brushes.length; _i < _len; _i++) {
-    brush = brushes[_i];
+  _ref = brushes.concat([wordBrush]);
+  for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+    brush = _ref[_i];
     brush.on('brush', focusLines);
   }
 });

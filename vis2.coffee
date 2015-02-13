@@ -51,7 +51,9 @@ d3.csv('FreqWords5Year.csv')
     # verticalOrderingScale = d3.scale.linear().domain([0, rows.length - 1]).range([0, HEIGHT])
 
     allWords = rows.map (row) -> row.word
-    wordScale = d3.scale.ordinal().domain(allWords).range([0, HEIGHT])
+    # allWords.sort()
+
+    wordScale = d3.scale.ordinal().domain(allWords).rangePoints([0, HEIGHT])
 
     # colourScale = d3.scale.linear().domain([250, 0]).range(['hsl(240, 40%, 90%)', 'hsl(310, 60%, 30%)'])
     colourScale = d3.scale.category20b().domain([250, 0])
@@ -92,15 +94,6 @@ d3.csv('FreqWords5Year.csv')
         cx: (point) -> point.x
         cy: (point) -> point.y
 
-      g.selectAll('text.word').data(adjustedRows)
-        .style
-          # fill: (row) -> colourScale(row.rankingData[4].y)
-          opacity: 0
-        .filter (row) -> row is mouseOverRow
-        .style
-          # fill: 'red'
-          opacity: 1
-
       g.selectAll('path.line').data(adjustedRows)
         .attr
           stroke: (row) -> colourScale(row.rankingData[4].y)
@@ -135,18 +128,6 @@ d3.csv('FreqWords5Year.csv')
         'stroke-width': 1.8
         'fill': 'none'
       ).on('mouseover', mouseOverLine)
-
-    # draw on labels
-    g.selectAll('text')
-      .data(adjustedRows)
-      .enter()
-      .append('text')
-      .text (row) -> row.word
-      .attr
-        'class': 'word'
-        x: WIDTH + 15
-        y: (row) -> verticalOrderingScale(row.rankingData[4].y)
-        fill: (row) -> colourScale(row.rankingData[4].y)
 
     # draw on axes
     brushes = [0..4].map (i) ->
@@ -186,22 +167,27 @@ d3.csv('FreqWords5Year.csv')
       transform: 'translate(' + horizontalScale(5) + ',0)'
     ).call(wordAxis)
 
-    brush = d3.svg.brush()
-      .y(verticalOrderingScale)
+    wordBrush = d3.svg.brush()
+      .y(wordScale)
 
-    brushg = g.append('g').attr(
+    wordBrushG = g.append('g').attr(
       'class': 'brush'
       'transform': 'translate(' + (horizontalScale(5) - 10) + ',0)'
       'fill': 'rgba(255,0,0,0.2)'
-    ).call(brush)
+    ).call(wordBrush)
 
-    brushg.selectAll('rect').attr width: 40
+    wordBrushG.selectAll('rect').attr width: 40
 
     # brushing behaviour
     rowMatchesBrushes = (row) ->
+      # check time data
       for i in [0..4] when not brushes[i].empty()
         [lower, upper] = brushes[i].extent()
-        return false unless lower <= row.rankingData[i].y <= upper
+        return false unless lower <= verticalOrderingScale.invert( row.rankingData[i].y ) <= upper
+
+      if not wordBrush.empty()
+        [l, u] = wordBrush.extent()
+        return false unless l <= row.rankingData[5].y <= u
       return true
 
     focusLines = ->
@@ -210,8 +196,16 @@ d3.csv('FreqWords5Year.csv')
         .filter rowMatchesBrushes
         .attr 'opacity': 0.8
 
-    for brush in brushes
+    for brush in brushes.concat([wordBrush])
       brush.on 'brush', focusLines
+
+    # DEBUG
+    # wordBrush.on 'brush', ->
+    #   # check word brush
+    #   [lower, upper] = wordBrush.extent()
+    #   console.log lower, adjustedRows[37].rankingData[5], upper
+      # console.log wordScale.domain().filter( (w) -> lower <= wordScale(w) <= upper)
+      # return false unless lower <= wordScale.invert( row.rankingData[5].y ) <= upper
 
     return
   )
