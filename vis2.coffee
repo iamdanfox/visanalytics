@@ -20,70 +20,53 @@ Your software must have the following essential functionality:
 
 ###
 
-COLUMN_NAMES = ['1990-1994', '1995-1999', '2000-2004', '2005-2009', '2010-2014']
+YEAR_COLUMNS = ['1990-1994', '1995-1999', '2000-2004', '2005-2009', '2010-2014']
+NUMBER_COLUMNS = YEAR_COLUMNS.concat('sum')
+AXIS_NAMES = YEAR_COLUMNS.concat(['word'])
+WIDTH = 600
+HEIGHT = 600
 
 d3.csv('FreqWords5Year.csv')
   .row( (rawRow) ->
-    (['sum'].concat COLUMN_NAMES).map (columnName) ->
-      rawRow[columnName] = parseInt(rawRow[columnName], 10)
+    NUMBER_COLUMNS.map (columnName) -> rawRow[columnName] = parseInt(rawRow[columnName], 10)
     rawRow
   )
   .get((error, rows) ->
     # initialisation stuff
-    WIDTH = 600
-    HEIGHT = 600
-
     svg = d3.select('#visualisation2').style
       width: WIDTH + 200
       height: HEIGHT + 200
       background: '#444'
-      # border: '1px solid #333'
-
     g = svg.append('g').attr
       'transform': 'translate(70,100)'
 
-    # project data
-    # grouped = {}
-    # for colName in COLUMN_NAMES
-    #   grouped[colName] = rows.map((row) -> row[colName]).sort().reverse()
-
-
+    # define scales
     horizontalScale = d3.scale.linear().domain([0,5]).range([0, WIDTH - 20])
-    verticalOrderingScale = d3.scale.linear().domain([250, 0]).range([0, HEIGHT])
-    # verticalOrderingScale = d3.scale.linear().domain([0, rows.length - 1]).range([0, HEIGHT])
-
-    allWords = rows.map (row) -> row.word
-    # allWords.sort()
-
-    wordScale = d3.scale.ordinal().domain(allWords).rangePoints([0, HEIGHT])
-
-    # colourScale = d3.scale.linear().domain([250, 0]).range(['hsl(240, 40%, 90%)', 'hsl(310, 60%, 30%)'])
+    verticalFreqScale = d3.scale.linear().domain([250, 0]).range([0, HEIGHT])
+    wordScale = d3.scale.ordinal().domain(rows.map (row) -> row.word).rangePoints([0, HEIGHT])
     colourScale = d3.scale.category20b().domain([250, 0])
+    scales = [verticalFreqScale,
+              verticalFreqScale,
+              verticalFreqScale,
+              verticalFreqScale,
+              verticalFreqScale,
+              wordScale]
 
-
-    # rankingDataFn = (row) -> for i in [0..4]
-    #   x: i
-    #   y: grouped[COLUMN_NAMES[i]].indexOf row[COLUMN_NAMES[i]]
-
-    rawDataFn = (row) ->
-      timeData = for i in [0..4]
+    # transform data
+    coordinatesTransform = (row) ->
+      d3.zip(scales, AXIS_NAMES).map ([scale, colName], i) ->
         x: horizontalScale(i)
-        y: verticalOrderingScale(row[COLUMN_NAMES[i]])
-      # return timeData
-      return timeData.concat([
-        x: horizontalScale(5)
-        y: wordScale(row.word)
-      ])
+        y: scale(row[colName])
 
-    adjustedRows = rows.map (row) ->
-      rankingData: rawDataFn(row)
+    transformedData = rows.map (row) ->
+      coordinates: coordinatesTransform(row)
       sum: row.sum
       word: row.word
 
+    # make lines highlight when you hover over one
     mouseOverLine = (mouseOverRow) ->
       lineColour = 'black'
-
-      circles = g.selectAll('circle.line-highlight').data(mouseOverRow.rankingData)
+      circles = g.selectAll('circle.line-highlight').data(mouseOverRow.coordinates)
       circles.enter()
         .append('circle')
         .attr
@@ -91,28 +74,20 @@ d3.csv('FreqWords5Year.csv')
           r: 3
           stroke: lineColour
           'stroke-width': 2
-      # circles.exit().remove()
       circles.attr
         cx: (point) -> point.x
         cy: (point) -> point.y
 
-      g.selectAll('path.line').data(adjustedRows)
+      g.selectAll('path.line').data(transformedData)
         .attr
-          stroke: (row) -> colourScale(row.rankingData[4].y)
+          stroke: (row) -> colourScale(row.coordinates[4].y)
         .filter (row) -> row is mouseOverRow
         .attr
           stroke: lineColour
 
-      # lines = g.select('path').data(row).attr
-      #   stroke: 'red'
-
-      # lines.exit().attr
-      #   stroke: (row) -> colourScale(row.rankingData[4].y)
-
-
-    # draw actual lines
+    # draw actual lines, link to mouseOver behaviour
     g.selectAll('path')
-      .data(adjustedRows)
+      .data(transformedData)
       .enter()
       .append('path')
       .attr(
@@ -122,32 +97,24 @@ d3.csv('FreqWords5Year.csv')
           (d3.svg.line()
             .interpolate('cardinal')
             .tension(0.8)
-            # .interpolate('linear')
             .x (point) -> point.x
             .y (point) -> point.y
-          )(row.rankingData)
-        'stroke': (row) -> colourScale(row.rankingData[4].y)
+          )(row.coordinates)
+        'stroke': (row) -> colourScale(row.coordinates[4].y)
         'stroke-width': 1.8
         'fill': 'none'
       ).on('mouseover', mouseOverLine)
 
-    # draw on axes
-    scales = [verticalOrderingScale,
-              verticalOrderingScale,
-              verticalOrderingScale,
-              verticalOrderingScale,
-              verticalOrderingScale,
-              wordScale]
-    brushes = d3.zip([0..scales.length], scales).map ([i, scale]) ->
+    # draw on axes and brushes
+    brushes = scales.map (scale, i) ->
       axis = d3.svg.axis()
         .scale(scale)
         .orient('right')
 
-      g.append('g')
-        .attr(
-          'class': 'vertical-axis'
-          transform: 'translate(' + horizontalScale(i) + ',0)'
-        ).call(axis)
+      g.append('g').attr(
+        'class': 'vertical-axis'
+        transform: 'translate(' + horizontalScale(i) + ',0)'
+      ).call(axis)
 
       brush = d3.svg.brush().y(scale)
 
@@ -165,7 +132,7 @@ d3.csv('FreqWords5Year.csv')
 
     # brushing behaviour
     rowMatchesBrushes = (row) ->
-      return d3.zip row.rankingData, scales, brushes
+      return d3.zip row.coordinates, scales, brushes
         .filter ([data,scale,brush]) -> not brush.empty()
         .every ([data,scale,brush]) ->
           [lower, upper] = brush.extent()
