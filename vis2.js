@@ -13,10 +13,12 @@ word.
 
 Your software must have the following essential functionality:
 
- - Display a line for each of the k (20  k  40) data objects, intersecting with the 6 axes at correct places. If you choose k < 40, it is recommended to use the k words with more frequent occurrence.
+ - Display a line for each of the k (20  k  40) data objects, intersecting with the 6 axes at correct places.
+ If you choose k < 40, it is recommended to use the k words with more frequent occurrence.
  - Display labels for each axis.
  - Provide a brushing utility. (Vertical brushing on all)
- - It is recommended to set all five numerical axes to the range [0, 250]. However, you may experiment with other ranges for these axes.
+ - It is recommended to set all five numerical axes to the range [0, 250]. However, you may experiment
+ with other ranges for these axes.
  */
 var COLUMN_NAMES;
 
@@ -28,7 +30,7 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
   });
   return rawRow;
 }).get(function(error, rows) {
-  var HEIGHT, WIDTH, adjustedRows, allWords, brush, brushes, colourScale, focusLines, g, horizontalScale, mouseOverLine, rawDataFn, rowMatchesBrushes, svg, verticalOrderingScale, wordAxis, wordBrush, wordBrushG, wordScale, _i, _len, _ref;
+  var HEIGHT, WIDTH, adjustedRows, allWords, brush, brushes, colourScale, focusLines, g, horizontalScale, mouseOverLine, rawDataFn, rowMatchesBrushes, scales, svg, verticalOrderingScale, wordScale, _i, _j, _len, _ref, _results;
   WIDTH = 600;
   HEIGHT = 600;
   svg = d3.select('#visualisation2').style({
@@ -119,14 +121,20 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     'stroke-width': 1.8,
     'fill': 'none'
   }).on('mouseover', mouseOverLine);
-  brushes = [0, 1, 2, 3, 4].map(function(i) {
-    var axis, brush, brushg;
-    axis = d3.svg.axis().scale(verticalOrderingScale).orient('right');
+  scales = [verticalOrderingScale, verticalOrderingScale, verticalOrderingScale, verticalOrderingScale, verticalOrderingScale, wordScale];
+  brushes = d3.zip((function() {
+    _results = [];
+    for (var _i = 0, _ref = scales.length; 0 <= _ref ? _i <= _ref : _i >= _ref; 0 <= _ref ? _i++ : _i--){ _results.push(_i); }
+    return _results;
+  }).apply(this), scales).map(function(_arg) {
+    var axis, brush, brushg, i, scale;
+    i = _arg[0], scale = _arg[1];
+    axis = d3.svg.axis().scale(scale).orient('right');
     g.append('g').attr({
       'class': 'vertical-axis',
       transform: 'translate(' + horizontalScale(i) + ',0)'
     }).call(axis);
-    brush = d3.svg.brush().y(verticalOrderingScale);
+    brush = d3.svg.brush().y(scale);
     brushg = g.append('g').attr({
       'class': 'brush',
       'transform': 'translate(' + (horizontalScale(i) - 10) + ',0)',
@@ -137,38 +145,20 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     });
     return brush;
   });
-  wordAxis = d3.svg.axis().scale(wordScale).orient('right');
-  g.append('g').attr({
-    'class': 'vertical-axis',
-    transform: 'translate(' + horizontalScale(5) + ',0)'
-  }).call(wordAxis);
-  wordBrush = d3.svg.brush().y(wordScale);
-  wordBrushG = g.append('g').attr({
-    'class': 'brush',
-    'transform': 'translate(' + (horizontalScale(5) - 10) + ',0)',
-    'fill': 'rgba(255,0,0,0.2)'
-  }).call(wordBrush);
-  wordBrushG.selectAll('rect').attr({
-    width: 40
-  });
   rowMatchesBrushes = function(row) {
-    var i, l, lower, u, upper, _i, _ref, _ref1, _ref2, _ref3;
-    for (i = _i = 0; _i <= 4; i = ++_i) {
-      if (!(!brushes[i].empty())) {
-        continue;
-      }
-      _ref = brushes[i].extent(), lower = _ref[0], upper = _ref[1];
-      if (!((lower <= (_ref1 = verticalOrderingScale.invert(row.rankingData[i].y)) && _ref1 <= upper))) {
-        return false;
-      }
-    }
-    if (!wordBrush.empty()) {
-      _ref2 = wordBrush.extent(), l = _ref2[0], u = _ref2[1];
-      if (!((l <= (_ref3 = row.rankingData[5].y) && _ref3 <= u))) {
-        return false;
-      }
-    }
-    return true;
+    return d3.zip(row.rankingData, scales, brushes).filter(function(_arg) {
+      var brush, data, scale;
+      data = _arg[0], scale = _arg[1], brush = _arg[2];
+      return !brush.empty();
+    }).every(function(_arg) {
+      var brush, data, lower, scale, transform, upper, _ref1, _ref2;
+      data = _arg[0], scale = _arg[1], brush = _arg[2];
+      _ref1 = brush.extent(), lower = _ref1[0], upper = _ref1[1];
+      transform = scale.invert != null ? scale.invert : function(x) {
+        return x;
+      };
+      return (lower <= (_ref2 = transform(data.y)) && _ref2 <= upper);
+    });
   };
   focusLines = function() {
     return g.selectAll('path.line, text.word').attr({
@@ -177,9 +167,8 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
       'opacity': 0.8
     });
   };
-  _ref = brushes.concat([wordBrush]);
-  for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-    brush = _ref[_i];
+  for (_j = 0, _len = brushes.length; _j < _len; _j++) {
+    brush = brushes[_j];
     brush.on('brush', focusLines);
   }
 });

@@ -11,10 +11,12 @@ word.
 
 Your software must have the following essential functionality:
 
- - Display a line for each of the k (20  k  40) data objects, intersecting with the 6 axes at correct places. If you choose k < 40, it is recommended to use the k words with more frequent occurrence.
+ - Display a line for each of the k (20  k  40) data objects, intersecting with the 6 axes at correct places.
+ If you choose k < 40, it is recommended to use the k words with more frequent occurrence.
  - Display labels for each axis.
  - Provide a brushing utility. (Vertical brushing on all)
- - It is recommended to set all five numerical axes to the range [0, 250]. However, you may experiment with other ranges for these axes.
+ - It is recommended to set all five numerical axes to the range [0, 250]. However, you may experiment
+ with other ranges for these axes.
 
 ###
 
@@ -130,9 +132,15 @@ d3.csv('FreqWords5Year.csv')
       ).on('mouseover', mouseOverLine)
 
     # draw on axes
-    brushes = [0..4].map (i) ->
+    scales = [verticalOrderingScale,
+              verticalOrderingScale,
+              verticalOrderingScale,
+              verticalOrderingScale,
+              verticalOrderingScale,
+              wordScale]
+    brushes = d3.zip([0..scales.length], scales).map ([i, scale]) ->
       axis = d3.svg.axis()
-        .scale(verticalOrderingScale)
+        .scale(scale)
         .orient('right')
 
       g.append('g')
@@ -141,8 +149,7 @@ d3.csv('FreqWords5Year.csv')
           transform: 'translate(' + horizontalScale(i) + ',0)'
         ).call(axis)
 
-      brush = d3.svg.brush()
-        .y(verticalOrderingScale)
+      brush = d3.svg.brush().y(scale)
 
       brushg = g.append('g')
         .attr(
@@ -156,39 +163,14 @@ d3.csv('FreqWords5Year.csv')
 
       return brush
 
-
-    # draw on word axis:
-    wordAxis = d3.svg.axis()
-      .scale(wordScale)
-      .orient('right')
-
-    g.append('g').attr(
-      'class': 'vertical-axis'
-      transform: 'translate(' + horizontalScale(5) + ',0)'
-    ).call(wordAxis)
-
-    wordBrush = d3.svg.brush()
-      .y(wordScale)
-
-    wordBrushG = g.append('g').attr(
-      'class': 'brush'
-      'transform': 'translate(' + (horizontalScale(5) - 10) + ',0)'
-      'fill': 'rgba(255,0,0,0.2)'
-    ).call(wordBrush)
-
-    wordBrushG.selectAll('rect').attr width: 40
-
     # brushing behaviour
     rowMatchesBrushes = (row) ->
-      # check time data
-      for i in [0..4] when not brushes[i].empty()
-        [lower, upper] = brushes[i].extent()
-        return false unless lower <= verticalOrderingScale.invert( row.rankingData[i].y ) <= upper
-
-      if not wordBrush.empty()
-        [l, u] = wordBrush.extent()
-        return false unless l <= row.rankingData[5].y <= u
-      return true
+      return d3.zip row.rankingData, scales, brushes
+        .filter ([data,scale,brush]) -> not brush.empty()
+        .every ([data,scale,brush]) ->
+          [lower, upper] = brush.extent()
+          transform = if scale.invert? then scale.invert else (x) -> x
+          return lower <= transform( data.y ) <= upper
 
     focusLines = ->
       g.selectAll('path.line, text.word')
@@ -196,16 +178,8 @@ d3.csv('FreqWords5Year.csv')
         .filter rowMatchesBrushes
         .attr 'opacity': 0.8
 
-    for brush in brushes.concat([wordBrush])
+    for brush in brushes
       brush.on 'brush', focusLines
-
-    # DEBUG
-    # wordBrush.on 'brush', ->
-    #   # check word brush
-    #   [lower, upper] = wordBrush.extent()
-    #   console.log lower, adjustedRows[37].rankingData[5], upper
-      # console.log wordScale.domain().filter( (w) -> lower <= wordScale(w) <= upper)
-      # return false unless lower <= wordScale.invert( row.rankingData[5].y ) <= upper
 
     return
   )
