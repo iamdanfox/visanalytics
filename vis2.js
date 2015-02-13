@@ -28,7 +28,7 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
   });
   return rawRow;
 }).get(function(error, rows) {
-  var HEIGHT, WIDTH, adjustedRows, brush, brushes, colName, colourScale, focusLines, g, grouped, horizontalScale, mouseOverLine, rankingData, rowMatchesBrushes, svg, verticalOrderingScale, _i, _j, _len, _len1;
+  var HEIGHT, WIDTH, adjustedRows, brush, brushes, colName, colourScale, focusLines, g, grouped, horizontalScale, mouseOverLine, rawDataFn, rowMatchesBrushes, svg, verticalOrderingScale, _i, _j, _len, _len1;
   WIDTH = 600;
   HEIGHT = 600;
   svg = d3.select('#visualisation2').style({
@@ -46,27 +46,27 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
       return row[colName];
     }).sort().reverse();
   }
-  rankingData = function(row) {
+  rawDataFn = function(row) {
     var i, _j, _results;
     _results = [];
     for (i = _j = 0; _j <= 4; i = ++_j) {
       _results.push({
         x: i,
-        y: grouped[COLUMN_NAMES[i]].indexOf(row[COLUMN_NAMES[i]])
+        y: row[COLUMN_NAMES[i]]
       });
     }
     return _results;
   };
   adjustedRows = rows.map(function(row) {
     return {
-      rankingData: rankingData(row),
+      rankingData: rawDataFn(row),
       sum: row.sum,
       word: row.word
     };
   });
   horizontalScale = d3.scale.linear().domain([0, 4]).range([0, WIDTH - 20]);
-  verticalOrderingScale = d3.scale.linear().domain([0, rows.length - 1]).range([0, HEIGHT]);
-  colourScale = d3.scale.linear().domain([0, 40]).range(['hsl(240, 40%, 90%)', 'hsl(310, 60%, 30%)']);
+  verticalOrderingScale = d3.scale.linear().domain([250, 0]).range([0, HEIGHT]);
+  colourScale = d3.scale.category20b().domain([250, 0]);
   mouseOverLine = function(mouseOverRow) {
     var circles, lineColour;
     lineColour = 'black';

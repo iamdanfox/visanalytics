@@ -45,21 +45,25 @@ d3.csv('FreqWords5Year.csv')
     for colName in COLUMN_NAMES
       grouped[colName] = rows.map((row) -> row[colName]).sort().reverse()
 
-    rankingData = (row) -> for i in [0..4]
+    # rankingDataFn = (row) -> for i in [0..4]
+    #   x: i
+    #   y: grouped[COLUMN_NAMES[i]].indexOf row[COLUMN_NAMES[i]]
+
+    rawDataFn = (row) -> for i in [0..4]
       x: i
-      y: grouped[COLUMN_NAMES[i]].indexOf row[COLUMN_NAMES[i]]
+      y: row[COLUMN_NAMES[i]]
 
     adjustedRows = rows.map (row) ->
-      rankingData: rankingData(row)
+      rankingData: rawDataFn(row)
       sum: row.sum
       word: row.word
 
     horizontalScale = d3.scale.linear().domain([0,4]).range([0, WIDTH - 20])
-    verticalOrderingScale = d3.scale.linear().domain([0, rows.length - 1]).range([0, HEIGHT])
-    # colourScale = d3.scale.category20c().domain([36,1000]) # for sum attribute
+    verticalOrderingScale = d3.scale.linear().domain([250, 0]).range([0, HEIGHT])
+    # verticalOrderingScale = d3.scale.linear().domain([0, rows.length - 1]).range([0, HEIGHT])
 
-    colourScale = d3.scale.linear().domain([0, 40]).range([
-      'hsl(240, 40%, 90%)', 'hsl(310, 60%, 30%)'])
+    # colourScale = d3.scale.linear().domain([250, 0]).range(['hsl(240, 40%, 90%)', 'hsl(310, 60%, 30%)'])
+    colourScale = d3.scale.category20b().domain([250, 0])
 
     mouseOverLine = (mouseOverRow) ->
       lineColour = 'black'
