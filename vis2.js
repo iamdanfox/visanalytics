@@ -20,11 +20,13 @@ Your software must have the following essential functionality:
  - It is recommended to set all five numerical axes to the range [0, 250]. However, you may experiment
  with other ranges for these axes.
  */
-var AXIS_NAMES, COLOUR_SCALE, HEIGHT, HORIZONTAL_SCALE, NUMBER_COLUMNS, WIDTH, YEAR_COLUMNS, drawBrushesAndAxes, drawPathsOntoSvg, drawTextLabels, g, makeBrushes, makeSvgGroup, mouseOverLineCallback, transformData;
+
+/*
+This section defines constants that are independent of the data
+ */
+var AXIS_NAMES, COLOUR_SCALE, FREQ_SCALE, HEIGHT, HORIZONTAL_SCALE, MOUSEOVER_LINE_COLOUR, WIDTH, YEAR_COLUMNS, drawAxes, drawBrushes, drawLines, drawTextLabels, g, makeAxes, makeBrushes, makeMouseoverCallback, makeVerticalScales, makeVisualisationContainer, transformRows;
 
 YEAR_COLUMNS = ['1990-1994', '1995-1999', '2000-2004', '2005-2009', '2010-2014'];
-
-NUMBER_COLUMNS = YEAR_COLUMNS.concat('sum');
 
 AXIS_NAMES = YEAR_COLUMNS.concat(['word']);
 
@@ -34,68 +36,140 @@ HEIGHT = 600;
 
 HORIZONTAL_SCALE = d3.scale.linear().domain([0, 5]).range([0, WIDTH - 20]);
 
+FREQ_SCALE = d3.scale.linear().domain([250, 0]).range([0, HEIGHT]);
+
 COLOUR_SCALE = d3.scale.category20b().domain([250, 0]);
 
-makeSvgGroup = function() {
+MOUSEOVER_LINE_COLOUR = 'black';
+
+
+/*
+The following functions return create and return elements of the visualisation.
+ */
+
+makeVisualisationContainer = function() {
   return d3.select('#visualisation2').style({
     width: WIDTH + 200,
     height: HEIGHT + 200,
     background: '#444'
   }).append('g').attr({
-    'transform': 'translate(70,100)'
+    'transform': 'translate(70, 100)'
   });
 };
 
-transformData = function(rows, verticalScales) {
+makeVerticalScales = function(rows) {
+  var wordScale;
+  wordScale = d3.scale.ordinal().domain(rows.map(function(row) {
+    return row.word;
+  })).rangePoints([0, HEIGHT]);
+  return [FREQ_SCALE, FREQ_SCALE, FREQ_SCALE, FREQ_SCALE, FREQ_SCALE, wordScale];
+};
+
+transformRows = function(rows, verticalScales) {
   return rows.map(function(row) {
     return {
       coordinates: d3.zip(verticalScales, AXIS_NAMES).map(function(_arg, i) {
-        var colName, scale;
-        scale = _arg[0], colName = _arg[1];
+        var axisName, scale;
+        scale = _arg[0], axisName = _arg[1];
         return {
           x: HORIZONTAL_SCALE(i),
-          y: scale(row[colName])
+          y: scale(row[axisName])
         };
       }),
-      sum: row.sum,
       word: row.word
     };
   });
 };
 
-mouseOverLineCallback = function(g, transformedData) {
+makeAxes = function(verticalScales) {
+  return verticalScales.map(function(scale) {
+    return d3.svg.axis().scale(scale).orient('right');
+  });
+};
+
+makeBrushes = function(g, verticalScales) {
+  var brush, brushes, highlightBrushedLines, rowMatchesAllBrushesPredicate, _i, _len;
+  brushes = verticalScales.map(function(scale) {
+    return d3.svg.brush().y(scale);
+  });
+  rowMatchesAllBrushesPredicate = function(row) {
+    return d3.zip(row.coordinates, verticalScales, brushes).filter(function(_arg) {
+      var brush, coordinate, scale;
+      coordinate = _arg[0], scale = _arg[1], brush = _arg[2];
+      return !brush.empty();
+    }).every(function(_arg) {
+      var brush, coordinate, lower, scale, upper, y, _ref;
+      coordinate = _arg[0], scale = _arg[1], brush = _arg[2];
+      y = scale.invert != null ? scale.invert(coordinate.y) : coordinate.y;
+      _ref = brush.extent(), lower = _ref[0], upper = _ref[1];
+      return (lower <= y && y <= upper);
+    });
+  };
+  highlightBrushedLines = function() {
+    return g.selectAll('path.line').attr({
+      'opacity': 0.1
+    }).filter(rowMatchesAllBrushesPredicate).attr({
+      'opacity': 0.8
+    });
+  };
+  for (_i = 0, _len = brushes.length; _i < _len; _i++) {
+    brush = brushes[_i];
+    brush.on('brush', highlightBrushedLines);
+  }
+  return brushes;
+};
+
+makeMouseoverCallback = function(g, transformedRows) {
   return function(mouseOverRow) {
-    var circles, lineColour;
-    lineColour = 'black';
+    var circles;
     circles = g.selectAll('circle.line-highlight').data(mouseOverRow.coordinates);
     circles.enter().append('circle').attr({
       'class': 'line-highlight',
       'r': 3,
-      'stroke': lineColour,
+      'stroke': MOUSEOVER_LINE_COLOUR,
       'stroke-width': 2
     });
     circles.attr({
-      cx: function(point) {
+      'cx': function(point) {
         return point.x;
       },
-      cy: function(point) {
+      'cy': function(point) {
         return point.y;
       }
     });
-    return g.selectAll('path.line').data(transformedData).attr({
+    return g.selectAll('path.line').data(transformedRows).attr({
       'stroke': function(row) {
         return COLOUR_SCALE(row.coordinates[4].y);
       }
     }).filter(function(row) {
       return row === mouseOverRow;
     }).attr({
-      'stroke': lineColour
+      'stroke': MOUSEOVER_LINE_COLOUR
     });
   };
 };
 
-drawPathsOntoSvg = function(g, transformedData) {
-  return g.selectAll('path').data(transformedData).enter().append('path').attr({
+
+/*
+The following functions simply draw things onto the specified container `g`
+ */
+
+drawTextLabels = function(g) {
+  g.selectAll('text.axis-name').data(AXIS_NAMES).enter().append('text').text(function(name) {
+    return name;
+  }).style({
+    'font-weight': 'bold'
+  }).attr({
+    'class': 'axis-name',
+    'x': function(name, i) {
+      return HORIZONTAL_SCALE(i) - 15;
+    },
+    'y': -30
+  });
+};
+
+drawLines = function(g, transformedRows) {
+  g.selectAll('path').data(transformedRows).enter().append('path').attr({
     'title': function(row) {
       return row.word;
     },
@@ -112,51 +186,20 @@ drawPathsOntoSvg = function(g, transformedData) {
     },
     'stroke-width': 1.8,
     'fill': 'none'
-  }).on('mouseover', mouseOverLineCallback(g, transformedData));
+  }).on('mouseover', makeMouseoverCallback(g, transformedRows));
 };
 
-makeBrushes = function(g, verticalScales) {
-  var brush, brushes, focusLines, rowMatchesAllBrushes, _i, _len;
-  brushes = verticalScales.map(function(scale) {
-    return d3.svg.brush().y(scale);
-  });
-  rowMatchesAllBrushes = function(row) {
-    return d3.zip(row.coordinates, verticalScales, brushes).filter(function(_arg) {
-      var brush, data, scale;
-      data = _arg[0], scale = _arg[1], brush = _arg[2];
-      return !brush.empty();
-    }).every(function(_arg) {
-      var brush, data, lower, scale, transform, upper, _ref, _ref1;
-      data = _arg[0], scale = _arg[1], brush = _arg[2];
-      _ref = brush.extent(), lower = _ref[0], upper = _ref[1];
-      transform = scale.invert != null ? scale.invert : function(x) {
-        return x;
-      };
-      return (lower <= (_ref1 = transform(data.y)) && _ref1 <= upper);
-    });
-  };
-  focusLines = function() {
-    return g.selectAll('path.line').attr({
-      'opacity': 0.1
-    }).filter(rowMatchesAllBrushes).attr({
-      'opacity': 0.8
-    });
-  };
-  for (_i = 0, _len = brushes.length; _i < _len; _i++) {
-    brush = brushes[_i];
-    brush.on('brush', focusLines);
-  }
-  return brushes;
-};
-
-drawBrushesAndAxes = function(g, brushes, axes) {
-  return d3.zip(brushes, axes).map(function(_arg, i) {
-    var axis, brush;
-    brush = _arg[0], axis = _arg[1];
-    g.append('g').attr({
+drawAxes = function(g, axes) {
+  axes.map(function(axis, i) {
+    return g.append('g').attr({
       'class': 'vertical-axis',
       'transform': 'translate(' + HORIZONTAL_SCALE(i) + ',0)'
     }).call(axis);
+  });
+};
+
+drawBrushes = function(g, brushes) {
+  brushes.map(function(brush, i) {
     return g.append('g').call(brush).attr({
       'class': 'brush',
       'transform': 'translate(' + (HORIZONTAL_SCALE(i) - 10) + ',0)',
@@ -167,41 +210,35 @@ drawBrushesAndAxes = function(g, brushes, axes) {
   });
 };
 
-drawTextLabels = function(g) {
-  return g.selectAll('text.axis-name').data(AXIS_NAMES).enter().append('text').text(function(name) {
-    return name;
-  }).style({
-    'font-weight': 'bold'
-  }).attr({
-    'class': 'axis-name',
-    'x': function(name, i) {
-      return HORIZONTAL_SCALE(i) - 15;
-    },
-    'y': -30
-  });
-};
 
-g = makeSvgGroup();
+/*
+This section creates as much of the visualisation as we can before the data is loaded
+ */
+
+g = makeVisualisationContainer();
 
 drawTextLabels(g);
 
+
+/*
+Finally, we load the data and create the last parts of the visualisation
+ */
+
 d3.csv('FreqWords5Year.csv').row(function(rawRow) {
-  NUMBER_COLUMNS.map(function(columnName) {
-    return rawRow[columnName] = parseInt(rawRow[columnName], 10);
-  });
+  var columnName, _i, _len;
+  for (_i = 0, _len = YEAR_COLUMNS.length; _i < _len; _i++) {
+    columnName = YEAR_COLUMNS[_i];
+    rawRow[columnName] = parseInt(rawRow[columnName], 10);
+  }
   return rawRow;
 }).get(function(error, rows) {
-  var axes, brushes, frequencyScale, transformedData, verticalScales, wordScale;
-  frequencyScale = d3.scale.linear().domain([250, 0]).range([0, HEIGHT]);
-  wordScale = d3.scale.ordinal().domain(rows.map(function(row) {
-    return row.word;
-  })).rangePoints([0, HEIGHT]);
-  verticalScales = [frequencyScale, frequencyScale, frequencyScale, frequencyScale, frequencyScale, wordScale];
-  transformedData = transformData(rows, verticalScales);
-  drawPathsOntoSvg(g, transformedData);
+  var axes, brushes, transformedRows, verticalScales;
+  console.assert(error == null, 'Must load data correctly');
+  verticalScales = makeVerticalScales(rows);
+  transformedRows = transformRows(rows, verticalScales);
+  drawLines(g, transformedRows);
+  axes = makeAxes(verticalScales);
+  drawAxes(g, axes);
   brushes = makeBrushes(g, verticalScales);
-  axes = verticalScales.map(function(scale) {
-    return d3.svg.axis().scale(scale).orient('right');
-  });
-  return drawBrushesAndAxes(g, brushes, axes);
+  return drawBrushes(g, brushes);
 });
