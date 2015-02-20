@@ -16,12 +16,15 @@ Your software must have the following essential functionality:
 property, such as “first letter”, “word length” or “frequency of occurrence”.
  */
 d3.csv('FreqWords5Year.csv').row(function(rawRow) {
-  ['sum', 'avg'].map(function(property) {
-    return rawRow[property] = parseInt(rawRow[property], 10);
-  });
+  var property, _i, _len, _ref;
+  _ref = ['sum', 'avg'];
+  for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+    property = _ref[_i];
+    rawRow[property] = parseInt(rawRow[property], 10);
+  }
   return rawRow;
 }).get(function(error, rows) {
-  var HEIGHT, WEIGHT_PROPERTY, WIDTH, colourScale, fontSizeScale, force, maxW, minW, svg, texts, xPositionScale;
+  var HEIGHT, WEIGHT_PROPERTY, WIDTH, colourScale, fontSizeScale, force, maxW, minW, svg, texts;
   WIDTH = 800;
   HEIGHT = 380;
   WEIGHT_PROPERTY = 'avg';
@@ -31,7 +34,6 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     background: '#e0e0e0',
     border: '1px solid #333'
   });
-  xPositionScale = d3.scale.linear().domain([0, 100]).range([0, WIDTH]);
   minW = d3.min(rows, function(r) {
     return r[WEIGHT_PROPERTY];
   });
@@ -39,11 +41,7 @@ d3.csv('FreqWords5Year.csv').row(function(rawRow) {
     return r[WEIGHT_PROPERTY];
   });
   fontSizeScale = d3.scale.linear().domain([minW, maxW]).range([12, 50]);
-  colourScale = d3.scale.linear().domain([minW, maxW]).range(['#f00', '#756bb1']);
-  rows.map(function(r) {
-    r.x = Math.random();
-    return r.y = Math.random();
-  });
+  colourScale = d3.scale.category20b().domain([minW, maxW]);
   force = d3.layout.force().charge(0).size([WIDTH, HEIGHT]).nodes(rows).charge(-150).gravity(0.2).on('tick', function() {
     return texts.attr({
       x: function(r) {

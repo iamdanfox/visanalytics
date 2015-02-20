@@ -25,12 +25,11 @@ property, such as “first letter”, “word length” or “frequency of occur
 
 d3.csv('FreqWords5Year.csv')
   .row( (rawRow) ->
-    ['sum', 'avg'].map (property) -> rawRow[property] = parseInt(rawRow[property], 10)
+    rawRow[property] = parseInt(rawRow[property], 10) for property in ['sum', 'avg']
     rawRow
   )
   .get((error, rows) ->
     # use `avg` property of each row as weight.
-    # console.log rows[0], rows[20]
 
     WIDTH = 800
     HEIGHT = 380
@@ -42,13 +41,6 @@ d3.csv('FreqWords5Year.csv')
       background: '#e0e0e0'
       border: '1px solid #333'
 
-    # g = svg.append('g').style
-    #   transform: "translate(#{WIDTH/2}px, #{HEIGHT/2}px)"
-
-    xPositionScale = d3.scale.linear()
-      .domain([0, 100])
-      .range([0, WIDTH])
-
     minW = d3.min(rows, (r) -> r[WEIGHT_PROPERTY])
     maxW = d3.max(rows, (r) -> r[WEIGHT_PROPERTY])
 
@@ -56,32 +48,19 @@ d3.csv('FreqWords5Year.csv')
       .domain([minW, maxW])
       .range([12, 50])
 
-    colourScale = d3.scale.linear()
-      .domain([minW, maxW])
-      .range(['#f00', '#756bb1'])
-
-    # initialize
-    rows.map (r) ->
-      r.x = Math.random()
-      r.y = Math.random()
+    colourScale = d3.scale.category20b().domain([minW, maxW])
 
     force = d3.layout.force()
       .charge(0)
       .size([WIDTH, HEIGHT])
       .nodes(rows)
-      # .linkStrength(0.1)
-      # .friction(0.9)
-      # .linkDistance(20)
       .charge(-150)
       .gravity(0.2)
-      # .theta(0.8)
-      # .alpha(0.1)
       .on('tick', ->
         texts.attr
           x: (r) -> r.x
           y: (r) -> r.y
       )
-
 
     texts = svg.selectAll('text')
       .data(rows)
@@ -89,8 +68,6 @@ d3.csv('FreqWords5Year.csv')
       .append('text')
       .text((r) -> r.word)
       .call(force.drag)
-      # .attr('x', (r) -> xPositionScale(r.avg))
-      # .attr('y', (r) -> r.min)
       .style(
         'font-size': (r) -> fontSizeScale(r[WEIGHT_PROPERTY]) + 'px'
         'fill': (r) -> colourScale(r[WEIGHT_PROPERTY])
@@ -99,10 +76,5 @@ d3.csv('FreqWords5Year.csv')
 
     force.start()
 
-
-
     return
   )
-
-
-# 2 hours . TODO: use https://github.com/jasondavies/d3-cloud/blob/master/examples/simple.html.
